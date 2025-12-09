@@ -47,8 +47,8 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     // Managers
     public ScoreboardManager scoreboardManager;
     public KitManager kitManager;
-    public GangManager gangManager; // NEW
-    public MailManager mailManager; // NEW
+    public GangManager gangManager;
+    public MailManager mailManager;
 
     // --- ENABLE LOGIC ---
 
@@ -61,12 +61,16 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // 2. Initialize Managers
         this.scoreboardManager = new ScoreboardManager(this);
         this.kitManager = new KitManager(this);
-        this.gangManager = new GangManager(this); // NEW
-        this.mailManager = new MailManager(this); // NEW
+        this.gangManager = new GangManager(this);
+        this.mailManager = new MailManager(this);
 
         // 3. Register Commands
-        // Core
+        // Commands handled by THIS class:
         this.getCommand("pv").setExecutor(this);
+        this.getCommand("prisonvaults").setExecutor(this); // NEW: Reload command
+        this.getCommand("pay").setExecutor(this);          // NEW: Pay command
+
+        // External Command Executors:
         this.getCommand("sell").setExecutor(new SellCommand(this));
         this.getCommand("balance").setExecutor(new BalanceCommand(this));
         this.getCommand("rankup").setExecutor(new RankupCommand(this));
@@ -79,8 +83,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("createkit").setExecutor(new CreateKitCommand(this));
         this.getCommand("buykit").setExecutor(new BuyKitCommand(this));
 
-        // Gangs & Mail (NEW)
-        // IMPORTANT: We pass 'this.gangManager' so all commands share the SAME data.
+        // Gangs & Mail
         this.getCommand("gang").setExecutor(new GangCommand(this));
         this.getCommand("gangs").setExecutor(new GangsCommand(this.gangManager));
         this.getCommand("mail").setExecutor(new MailCommands(this));
@@ -90,7 +93,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new GangListener(this), this); // NEW
+        this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
 
         getLogger().info("PrisonVaults (Full Core + Gangs) enabled successfully!");
     }
@@ -103,10 +106,80 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         getLogger().info("PrisonVaults disabled.");
     }
 
-    // --- COMMAND: /pv <number> ---
+    // --- MAIN COMMAND EXECUTOR ---
+    // Handles: /pv, /prisonvaults, /pay
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+
+        // --- 1. RELOAD COMMAND (/prisonvaults reload) ---
+        if (label.equalsIgnoreCase("prisonvaults")) {
+            if (!sender.hasPermission("prisonvaults.admin")) {
+                sender.sendMessage(ChatColor.RED + "You do not have permission.");
+                return true;
+            }
+            if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+                reloadAllConfigs();
+                sender.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "PrisonVaults " + ChatColor.GRAY + "» " + ChatColor.WHITE + "All configuration files reloaded.");
+                return true;
+            }
+            sender.sendMessage(ChatColor.RED + "Usage: /prisonvaults reload");
+            return true;
+        }
+
+        // --- 2. PAY COMMAND (/pay <player> <amount>) ---
+        if (label.equalsIgnoreCase("pay")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(ChatColor.RED + "Only players can pay money.");
+                return true;
+            }
+            Player player = (Player) sender;
+
+            if (args.length < 2) {
+                player.sendMessage(ChatColor.RED + "Usage: /pay <player> <amount>");
+                return true;
+            }
+
+            Player target = Bukkit.getPlayer(args[0]);
+            if (target == null || !target.isOnline()) {
+                player.sendMessage(ChatColor.RED + "Player not found or offline.");
+                return true;
+            }
+
+            if (target.getUniqueId().equals(player.getUniqueId())) {
+                player.sendMessage(ChatColor.RED + "You cannot pay yourself.");
+                return true;
+            }
+
+            double amount;
+            try {
+                amount = Double.parseDouble(args[1]);
+            } catch (NumberFormatException e) {
+                player.sendMessage(ChatColor.RED + "Invalid amount.");
+                return true;
+            }
+
+            if (amount <= 0) {
+                player.sendMessage(ChatColor.RED + "Amount must be positive.");
+                return true;
+            }
+
+            if (getBalance(player) < amount) {
+                player.sendMessage(ChatColor.RED + "Insufficient funds.");
+                return true;
+            }
+
+            // Execute Transaction
+            removeMoney(player, amount);
+            addMoney(target, amount);
+
+            player.sendMessage(ChatColor.GREEN + "Paid " + ChatColor.WHITE + "$" + String.format("%.2f", amount) + ChatColor.GREEN + " to " + ChatColor.YELLOW + target.getName());
+            target.sendMessage(ChatColor.GREEN + "Received " + ChatColor.WHITE + "$" + String.format("%.2f", amount) + ChatColor.GREEN + " from " + ChatColor.YELLOW + player.getName());
+            return true;
+        }
+
+        // --- 3. VAULT COMMAND (/pv <number>) ---
+        // Default behavior if command is not 'pay' or 'prisonvaults'
         if (!(sender instanceof Player)) {
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
             return true;
@@ -255,12 +328,23 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         }
         pricesConfig = YamlConfiguration.loadConfiguration(pricesFile);
 
+        // Clear existing map to avoid duplicates on reload
+        priceMap.clear();
+
         for (String key : pricesConfig.getKeys(false)) {
             Material mat = Material.matchMaterial(key);
             if (mat != null) {
                 priceMap.put(mat, pricesConfig.getDouble(key));
             }
         }
+    }
+
+    // --- CONFIG RELOAD HELPER ---
+    public void reloadAllConfigs() {
+        reloadConfig(); // Default config.yml
+        loadPrices();   // Reload prices.yml
+        loadRanks();    // Reload ranks.yml
+        // If you have messages.yml, add logic here
     }
 
     // --- DATA FILE HELPERS ---

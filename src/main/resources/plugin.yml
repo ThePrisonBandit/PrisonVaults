@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.0'
+version: '1.0.1'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -52,15 +52,61 @@ commands:
   gangs:
       description: List all gangs on the server
       usage: /gangs
+  prisonvaults:
+      description: Reload all configuration files
+      usage: /prisonvaults reload
+  pay:
+      description: Send money to others
+      usage: /pay <player> <amount>
 permissions:
   prisonvaults.use:
     default: true
   prisonvaults.admin:
     description: Allows use of admin commands like /addmoney
     default: op
+  prisonvaults.addmoney:
+    description: Allows giving money to players
+    default: op
   prisonvaults.colorify:
     description: Allows changing name colors
     default: true
+  prisonvaults.createkit:
+    description: Allows creating kits
+    default: op
+  prisonvaults.sell:
+    description: Allows selling items to the server
+    default: true
+  prisonvaults.rankup:
+    description: Allows ranking up
+    default: true
+  prisonvaults.kit:
+    description: Allows using kits
+    default: true
+  prisonvaults.gang:
+    description: Allows gang commands
+    default: true
+  prisonvaults.mail:
+    description: Allows sending mail
+    default: true
+  prisonvaults.inbox:
+    description: Allows checking mail
+    default: true
+  prisonvaults.gangs:
+    description: Allows listing gangs
+    default: true
+  prisonvaults.pay:
+    description: Allows paying other players
+    default: true
+  prisonvaults.balance:
+    description: Allows checking balance
+    default: true
+  prisonvaults.buykit:
+    description: Allows buying kits
+    default: true
+  prisonvaults.reload:
+    description: Allows reloading the plugin configuration
+    default: op
+
 
 
 
