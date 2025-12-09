@@ -1,0 +1,10 @@
+# kits.yml
+# This file stores all your kit data.
+#
+# DO NOT EDIT MANUALLY unless you know what you are doing.
+# The plugin automatically generates 'Starter' and 'RankA' through 'RankZ'
+# if they are missing.
+#
+# Use /createkit in-game to add new kits safely.
+
+kits:

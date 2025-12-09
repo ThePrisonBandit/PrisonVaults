@@ -1,0 +1,66 @@
+name: PrisonVaults
+version: '1.0.0'
+main: me.theprisonbandit.prisonVaults.PrisonVaults
+api-version: '1.21'
+prefix: !
+load: STARTUP
+authors: [ ThePrisonBandit ]
+description: Vaults for minecraft prisons!
+commands:
+  pv:
+    description: Open a personal vault
+    usage: /pv <number>
+  sell:
+    description: Sell items to the server
+    usage: /sell or /sell all
+    aliases: [s]
+  balance:
+    description: Check your PrisonBucks
+    usage: /balance or /bal or /money
+    aliases: [bal, money]
+  rankup:
+      description: Rank up to the next level
+      usage: /rankup
+  addmoney:
+      description: Give money to a player
+      usage: /addmoney <player> <amount>
+  colorify:
+      description: Set a gradient name color
+      usage: /colorify <preset>
+      aliases: [colorname, color]
+  kit:
+      description: Get a kit
+      usage: /kit <name>
+  kits:
+      description: List kits
+      usage: /kits
+  createkit:
+      description: Admin create kit
+      usage: /createkit <name> <color> <tool> <armor> <enchant> <price>
+  buykit:
+      description: Open kit shop
+      usage: /buykit
+  gang:
+      description: Main gang command
+      usage: /gang
+  mail:
+      description: Send mail
+      usage: /mail <gang> or <gang member>
+  inbox:
+      description: Check mail
+      usage: /inbox
+  gangs:
+      description: List all gangs on the server
+      usage: /gangs
+permissions:
+  prisonvaults.use:
+    default: true
+  prisonvaults.admin:
+    description: Allows use of admin commands like /addmoney
+    default: op
+  prisonvaults.colorify:
+    description: Allows changing name colors
+    default: true
+
+
+

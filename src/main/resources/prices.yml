@@ -1,0 +1,9 @@
+# prices.yml
+# Format: MATERIAL_NAME: price_per_item
+COBBLESTONE: 0.5
+STONE: 1.0
+COAL: 5.0
+IRON_INGOT: 10.0
+GOLD_INGOT: 25.0
+DIAMOND: 100.0
+EMERALD: 150.0
