@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.2'
+version: '1.0.3'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -57,7 +57,26 @@ commands:
       usage: /prisonvaults reload
   pay:
       description: Send money to others
-      usage: /pay <player> <amount>
+      usage: /pay <player> <amount>]
+  rob:
+      description: Attempt to rob a player (Very low chance!)
+      usage: /rob <player>
+  job:
+    description: Join or quit jobs
+    usage: /job <join|quit>
+  myprofile:
+    description: View your stats
+    usage: /myprofile
+  whois:
+    description: View another player's stats
+    usage: /whois <player>
+  setbio:
+    description: Set your profile biography
+    usage: /setbio <text>
+    aliases: [ setdesc ]
+  setdesc:
+    description: Alias for setbio
+    usage: /setdesc <text>
 permissions:
   prisonvaults.use:
     default: true
@@ -106,6 +125,32 @@ permissions:
   prisonvaults.reload:
     description: Allows reloading the plugin configuration
     default: op
+  prisonvaults.rob:
+    description: Allows robbing other players
+    default: true
+  prisonvaults.pv:
+    description: Allows opening personal vaults
+    default: true
+  prisonvaults.pickpocket:
+    description: Allows pickpocketing other players
+    default: true
+  prisonvaults.job:
+    description: Allows joining and quitting jobs
+    default: true
+  prisonvaults.myprofile:
+    description: Allows viewing your profile
+    default: true
+  prisonvaults.whois:
+    description: Allows viewing other players' profiles
+    default: true
+  prisonvaults.setbio:
+    description: Allows setting your profile biography
+    default: true
+  prisonvaults.setdesc:
+    description: Alias for setbio permission
+    default: true
+
+
 
 
 

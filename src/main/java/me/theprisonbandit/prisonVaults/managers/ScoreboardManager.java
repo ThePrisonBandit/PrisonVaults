@@ -22,82 +22,115 @@ public class ScoreboardManager {
         org.bukkit.scoreboard.ScoreboardManager manager = Bukkit.getScoreboardManager();
         Scoreboard board = manager.getNewScoreboard();
 
-        Objective obj = board.registerNewObjective("PrisonStats", Criteria.DUMMY, ChatColor.GOLD + "" + ChatColor.BOLD + "PRISON");
+        // --- TITLE ---
+        Objective obj = board.registerNewObjective("PrisonStats", Criteria.DUMMY,
+                ChatColor.translateAlternateColorCodes('&', "&6&lPRISON &e&lVAULTS"));
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         // --- 1. PREPARE DATA ---
 
+        // Player Name & Gradient
         FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
-
-        // This MUST match what ColorifyCommand saves ("chat-color")
         String preset = data.getString("chat-color");
-
         String coloredName = GradientUtils.getGradient(player.getName(), preset);
-
-        // Fallback if something fails
         if (coloredName == null || coloredName.isEmpty()) {
             coloredName = ChatColor.WHITE + player.getName();
         }
 
-        // Gang Info Logic
+        // Gang Info
         Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
-        String gangDisplay = ChatColor.GRAY + "None";
-
+        String gangDisplay = ChatColor.GRAY + "No Gang";
         if (gang != null) {
             String colorCode = gang.getColor();
             if (colorCode == null || colorCode.isEmpty()) colorCode = "&f";
-            String rawString = colorCode + gang.getName() + " &7[" + colorCode + gang.getTag() + "&7]";
+            String rawString = colorCode + gang.getName() + " &8[" + colorCode + gang.getTag() + "&8]";
             gangDisplay = ChatColor.translateAlternateColorCodes('&', rawString);
         }
 
-        // --- 2. BUILD SCOREBOARD LINES ---
+        // Job Info
+        String currentJob = plugin.jobManager.getJob(player);
+        String jobTitle = "Unemployed";
+        if (!currentJob.equals("None")) {
+            jobTitle = plugin.jobManager.getJobRank(player).name();
+        }
 
-        obj.getScore(ChatColor.GRAY + "").setScore(15);
+        // --- 2. BUILD LINES ---
+        int score = 15;
 
-        // PLAYER
-        obj.getScore(ChatColor.GRAY + "Player:").setScore(14);
+        // Top Separator
+        createLine(board, obj, "&8&m---------------------", score--);
 
-        Team nameTeam = board.registerNewTeam("nameDisplay");
-        String playerKey = ChatColor.BLACK + "" + ChatColor.WHITE;
-        nameTeam.addEntry(playerKey);
-        nameTeam.setPrefix(coloredName); // Set the gradient name here
-        obj.getScore(playerKey).setScore(13);
+        // PLAYER SECTION (Dynamic Team Line)
+        createDynamicLine(board, obj, "playerName", "&f \uD83D\uDC64 ", coloredName, score--);
+        createLine(board, obj, "   &7Rank: &f" + plugin.getPlayerRank(player), score--);
 
-        obj.getScore(ChatColor.DARK_GRAY + "").setScore(12);
+        // Spacer
+        createLine(board, obj, ChatColor.RED + "", score--);
 
-        // RANK
-        obj.getScore(ChatColor.YELLOW + "Rank:").setScore(11);
-        obj.getScore(ChatColor.WHITE + plugin.getPlayerRank(player)).setScore(10);
+        // JOB SECTION
+        if (!currentJob.equals("None")) {
+            createLine(board, obj, "&b&l JOB INFO", score--);
+            createLine(board, obj, "   &7Job: &f" + currentJob, score--);
+            createLine(board, obj, "   &7Title: &f" + jobTitle, score--);
+        } else {
+            createLine(board, obj, "&b&l JOB INFO", score--);
+            createLine(board, obj, "   &7Status: &8Unemployed", score--);
+        }
 
-        obj.getScore(ChatColor.BLUE + "").setScore(9);
+        // Spacer
+        createLine(board, obj, ChatColor.GREEN + "", score--);
 
-        // GANG
-        obj.getScore(ChatColor.LIGHT_PURPLE + "Gang:").setScore(8);
-        Team gangTeam = board.registerNewTeam("gangDisplay");
-        String gangKey = ChatColor.BLACK + "" + ChatColor.GOLD;
-        gangTeam.addEntry(gangKey);
-        if (gangDisplay.length() > 64) gangDisplay = gangDisplay.substring(0, 64);
-        gangTeam.setPrefix(gangDisplay);
-        obj.getScore(gangKey).setScore(7);
+        // GANG SECTION
+        createLine(board, obj, "&d&l GANG", score--);
+        createDynamicLine(board, obj, "gangEntry", "   ", gangDisplay, score--);
 
-        obj.getScore(ChatColor.RESET + "").setScore(6);
+        // Spacer
+        createLine(board, obj, ChatColor.BLUE + "", score--);
 
-        // BALANCE
-        obj.getScore(ChatColor.GREEN + "Balance:").setScore(5);
+        // STATS SECTION
+        createLine(board, obj, "&a&l STATISTICS", score--);
         double bal = plugin.getBalance(player);
-        // Ensure NumberUtils.format handles the math correctly
-        obj.getScore(ChatColor.WHITE + "$" + NumberUtils.format(bal)).setScore(4);
+        createLine(board, obj, "   &7Balance: &2$&a" + NumberUtils.format(bal), score--);
+        createLine(board, obj, "   &7Vaults: &f" + plugin.getMaxVaults(player), score--);
 
-        obj.getScore(ChatColor.RED + "").setScore(3);
-
-        // VAULTS
-        obj.getScore(ChatColor.AQUA + "Vaults Unlocked:").setScore(2);
-        obj.getScore(ChatColor.WHITE + "" + plugin.getMaxVaults(player)).setScore(1);
+        // Bottom Separator
+        createLine(board, obj, "&8&m---------------------", score);
 
         player.setScoreboard(board);
     }
 
-    // Helper to refresh existing board without flickering (Optional)
+    /**
+     * Helper to create a standard text line.
+     */
+    private void createLine(Scoreboard board, Objective obj, String text, int scoreNum) {
+        String colored = ChatColor.translateAlternateColorCodes('&', text);
+        while (board.getEntries().contains(colored)) {
+            colored += ChatColor.RESET;
+        }
+        Score s = obj.getScore(colored);
+        s.setScore(scoreNum);
+    }
+
+    /**
+     * Helper to create a dynamic line using Teams.
+     * Updated: Removed the 64-character limit for 1.21 support.
+     */
+    private void createDynamicLine(Scoreboard board, Objective obj, String teamName, String prefix, String suffix, int scoreNum) {
+        Team team = board.registerNewTeam(teamName);
+
+        // Create a unique entry key (Invisible)
+        String entry = ChatColor.values()[scoreNum % 15].toString() + ChatColor.RESET;
+
+        team.addEntry(entry);
+        team.setPrefix(ChatColor.translateAlternateColorCodes('&', prefix));
+
+        // NO LIMIT: Gradients are long, so we allow the full suffix.
+        team.setSuffix(suffix);
+
+        Score s = obj.getScore(entry);
+        s.setScore(scoreNum);
+    }
+
     public void updateScoreboard(Player player) {
         setScoreboard(player);
     }

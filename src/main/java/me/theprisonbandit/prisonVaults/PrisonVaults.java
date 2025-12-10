@@ -4,10 +4,9 @@ import me.theprisonbandit.prisonVaults.commands.*;
 import me.theprisonbandit.prisonVaults.gangs.GangManager;
 import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
-import me.theprisonbandit.prisonVaults.listeners.ChatListener;
-import me.theprisonbandit.prisonVaults.listeners.GangListener;
-import me.theprisonbandit.prisonVaults.listeners.KitShopListener;
-import me.theprisonbandit.prisonVaults.listeners.VaultListener;
+import me.theprisonbandit.prisonVaults.listeners.*;
+import me.theprisonbandit.prisonVaults.managers.CooldownManager;
+import me.theprisonbandit.prisonVaults.managers.JobManager; // NEW IMPORT
 import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -31,7 +30,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     // --- VARIABLES ---
 
     // Economy Limits
-    // 999 Decillion (999 followed by 33 zeros)
     private static final double MAX_BALANCE = 999 * Math.pow(10, 33);
 
     // Economy & Prices
@@ -49,6 +47,8 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public KitManager kitManager;
     public GangManager gangManager;
     public MailManager mailManager;
+    public CooldownManager cooldownManager;
+    public JobManager jobManager; // NEW: Job Manager
 
     // --- ENABLE LOGIC ---
 
@@ -63,18 +63,19 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.kitManager = new KitManager(this);
         this.gangManager = new GangManager(this);
         this.mailManager = new MailManager(this);
+        this.cooldownManager = new CooldownManager();
+        this.jobManager = new JobManager(this); // NEW: Initialize JobManager
 
         // 3. Register Commands
-        // Commands handled by THIS class:
         this.getCommand("pv").setExecutor(this);
-        this.getCommand("prisonvaults").setExecutor(this); // NEW: Reload command
-        this.getCommand("pay").setExecutor(this);          // NEW: Pay command
+        this.getCommand("prisonvaults").setExecutor(this);
+        this.getCommand("pay").setExecutor(this);
 
-        // External Command Executors:
         this.getCommand("sell").setExecutor(new SellCommand(this));
         this.getCommand("balance").setExecutor(new BalanceCommand(this));
         this.getCommand("rankup").setExecutor(new RankupCommand(this));
         this.getCommand("addmoney").setExecutor(new AddMoneyCommand(this));
+        this.getCommand("rob").setExecutor(new RobCommand(this));
         this.getCommand("colorify").setExecutor(new ColorifyCommand(this));
 
         // Kits
@@ -89,13 +90,25 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("mail").setExecutor(new MailCommands(this));
         this.getCommand("inbox").setExecutor(new MailCommands(this));
 
+        // Jobs & Profile (NEW)
+        this.getCommand("job").setExecutor(new JobCommand(this));
+
+        ProfileCommand profileCmd = new ProfileCommand(this);
+        this.getCommand("myprofile").setExecutor(profileCmd);
+        this.getCommand("whois").setExecutor(profileCmd);
+        this.getCommand("setbio").setExecutor(profileCmd);
+        this.getCommand("setdesc").setExecutor(profileCmd);
+
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
         this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
+        this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
+        this.getServer().getPluginManager().registerEvents(new JobListener(this), this); // NEW: Job Listener
+        this.getServer().getPluginManager().registerEvents(new ProfileListener(), this); // NEW: Profile Listener
 
-        getLogger().info("PrisonVaults (Full Core + Gangs) enabled successfully!");
+        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs) enabled successfully!");
     }
 
     @Override
@@ -107,12 +120,11 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     }
 
     // --- MAIN COMMAND EXECUTOR ---
-    // Handles: /pv, /prisonvaults, /pay
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
-        // --- 1. RELOAD COMMAND (/prisonvaults reload) ---
+        // --- 1. RELOAD COMMAND ---
         if (label.equalsIgnoreCase("prisonvaults")) {
             if (!sender.hasPermission("prisonvaults.admin")) {
                 sender.sendMessage(ChatColor.RED + "You do not have permission.");
@@ -127,7 +139,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
             return true;
         }
 
-        // --- 2. PAY COMMAND (/pay <player> <amount>) ---
+        // --- 2. PAY COMMAND ---
         if (label.equalsIgnoreCase("pay")) {
             if (!(sender instanceof Player)) {
                 sender.sendMessage(ChatColor.RED + "Only players can pay money.");
@@ -179,7 +191,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         }
 
         // --- 3. VAULT COMMAND (/pv <number>) ---
-        // Default behavior if command is not 'pay' or 'prisonvaults'
         if (!(sender instanceof Player)) {
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
             return true;
@@ -238,6 +249,20 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         player.openInventory(vault);
     }
 
+    // --- PICKPOCKET OVERLOAD ---
+    public void openVault(Player viewer, int vaultNumber, Player owner, String customTitle) {
+        FileConfiguration playerData = getPlayerData(owner.getUniqueId());
+        Inventory vault = Bukkit.createInventory(null, 54, customTitle);
+
+        if (playerData.contains("vaults." + vaultNumber)) {
+            List<ItemStack> items = (List<ItemStack>) playerData.getList("vaults." + vaultNumber);
+            if (items != null) {
+                vault.setContents(items.toArray(new ItemStack[0]));
+            }
+        }
+        viewer.openInventory(vault);
+    }
+
     public void saveVault(Player player, int vaultNumber, Inventory vault) {
         File file = getPlayerDataFile(player.getUniqueId());
         FileConfiguration playerData = YamlConfiguration.loadConfiguration(file);
@@ -269,7 +294,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     public String getPlayerRank(Player player) {
         FileConfiguration data = getPlayerData(player.getUniqueId());
-        // Safety Check
         if (rankLadder.isEmpty()) return "A";
         return data.getString("rank", rankLadder.keySet().iterator().next());
     }
@@ -303,7 +327,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         double current = data.getDouble("economy.balance", 0.0);
         double newBalance = current + amount;
 
-        // Cap Logic: If exceeds 999 Decillion, cap it.
         if (newBalance > MAX_BALANCE) {
             newBalance = MAX_BALANCE;
         }
@@ -328,7 +351,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         }
         pricesConfig = YamlConfiguration.loadConfiguration(pricesFile);
 
-        // Clear existing map to avoid duplicates on reload
         priceMap.clear();
 
         for (String key : pricesConfig.getKeys(false)) {
@@ -339,12 +361,10 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         }
     }
 
-    // --- CONFIG RELOAD HELPER ---
     public void reloadAllConfigs() {
-        reloadConfig(); // Default config.yml
-        loadPrices();   // Reload prices.yml
-        loadRanks();    // Reload ranks.yml
-        // If you have messages.yml, add logic here
+        reloadConfig();
+        loadPrices();
+        loadRanks();
     }
 
     // --- DATA FILE HELPERS ---
