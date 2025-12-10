@@ -1,7 +1,8 @@
 package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
-import org.bukkit.ChatColor;
+import me.theprisonbandit.prisonVaults.utils.GradientUtils;
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -11,6 +12,8 @@ import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class ColorifyCommand implements CommandExecutor {
 
@@ -20,56 +23,75 @@ public class ColorifyCommand implements CommandExecutor {
         this.plugin = plugin;
     }
 
+    public enum GradientStyle {
+        RAINBOW, SUNSET, DAWNINGDAY, MIDNIGHT, GRASSLANDS, SWAMP, STEEL, GOLDEN,
+        FOOLSGOLD, DIAMOND, EMERALD, AMETHYST, WOODEN, SUNNYDAY, CYBERLORD,
+        VOLCANO, BLAZINGFIRE, DESERT, BLURPLE, REDINK, LEMONLIME
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // 1. Ensure sender is a Player
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            sender.sendMessage(ChatColor.RED + "Only players can use colorify.");
             return true;
         }
 
         Player player = (Player) sender;
 
-        // 2. Permission Check
         if (!player.hasPermission("prisonvaults.colorify")) {
-            player.sendMessage(ChatColor.RED + "No permission.");
+            player.sendMessage(ChatColor.RED + "You don't have permission.");
             return true;
         }
 
-        // 3. Validate Args
-        if (args.length < 1) {
-            player.sendMessage(ChatColor.RED + "Usage: /colorify <blurple|lemonlime|redink|rainbow|reset>");
+        if (args.length == 0) {
+            player.sendMessage(ChatColor.DARK_GRAY + "--- " + ChatColor.GOLD + "Available Gradients" + ChatColor.DARK_GRAY + " ---");
+            String styles = Arrays.stream(GradientStyle.values())
+                    .map(Enum::name)
+                    .map(String::toLowerCase)
+                    .collect(Collectors.joining(ChatColor.GRAY + ", " + ChatColor.YELLOW));
+            player.sendMessage(ChatColor.YELLOW + styles);
             return true;
         }
 
-        String preset = args[0].toLowerCase();
+        String inputName = args[0].toUpperCase();
+        GradientStyle selectedStyle;
 
-        // 4. Save to File
+        try {
+            selectedStyle = GradientStyle.valueOf(inputName);
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(ChatColor.RED + "Unknown style! Type /colorify for a list.");
+            return true;
+        }
+
+        // 1. SAVE THE SELECTION TO CONFIG
+        // This is crucial for the scoreboard to remember it!
+        savePlayerGradient(player, selectedStyle.name());
+
+        // 2. APPLY IMMEDIATELY (Visuals)
+        String newDisplayName = GradientUtils.getGradient(player.getName(), selectedStyle.name());
+        player.setDisplayName(newDisplayName);
+        player.setPlayerListName(newDisplayName);
+
+        // 3. UPDATE SCOREBOARD IMMEDIATELY
+        if (plugin.scoreboardManager != null) {
+            plugin.scoreboardManager.setScoreboard(player);
+        }
+
+        player.sendMessage(ChatColor.GREEN + "Your name color has been updated to: " + selectedStyle.name().toLowerCase());
+        return true;
+    }
+
+    private void savePlayerGradient(Player player, String gradientName) {
         File file = plugin.getPlayerDataFile(player.getUniqueId());
         FileConfiguration data = YamlConfiguration.loadConfiguration(file);
 
-        if (preset.equals("reset")) {
-            data.set("chat-color", null); // Remove color
-            player.sendMessage(ChatColor.GREEN + "Reset your name color.");
-        } else {
-            // Validate preset name
-            if (!preset.matches("blurple|lemonlime|redink|rainbow")) {
-                player.sendMessage(ChatColor.RED + "Invalid preset. Use: blurple, lemonlime, redink, rainbow");
-                return true;
-            }
-            data.set("chat-color", preset);
-            player.sendMessage(ChatColor.GREEN + "Set your name color to " + preset + "!");
-        }
+        // Saving to 'chat-color' so ScoreboardManager can find it
+        data.set("chat-color", gradientName);
 
         try {
             data.save(file);
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // --- THE FIX: Update the Scoreboard Immediately ---
-        plugin.scoreboardManager.setScoreboard(player);
-
-        return true;
     }
 }
