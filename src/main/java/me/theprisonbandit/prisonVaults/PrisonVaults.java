@@ -6,7 +6,7 @@ import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.CooldownManager;
-import me.theprisonbandit.prisonVaults.managers.JobManager; // NEW IMPORT
+import me.theprisonbandit.prisonVaults.managers.JobManager;
 import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -48,7 +48,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public GangManager gangManager;
     public MailManager mailManager;
     public CooldownManager cooldownManager;
-    public JobManager jobManager; // NEW: Job Manager
+    public JobManager jobManager;
 
     // --- ENABLE LOGIC ---
 
@@ -63,8 +63,9 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.kitManager = new KitManager(this);
         this.gangManager = new GangManager(this);
         this.mailManager = new MailManager(this);
-        this.cooldownManager = new CooldownManager();
-        this.jobManager = new JobManager(this); // NEW: Initialize JobManager
+        // UPDATED: Pass 'this' so CooldownManager can save to file
+        this.cooldownManager = new CooldownManager(this);
+        this.jobManager = new JobManager(this);
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -90,7 +91,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("mail").setExecutor(new MailCommands(this));
         this.getCommand("inbox").setExecutor(new MailCommands(this));
 
-        // Jobs & Profile (NEW)
+        // Jobs & Profile
         this.getCommand("job").setExecutor(new JobCommand(this));
 
         ProfileCommand profileCmd = new ProfileCommand(this);
@@ -105,16 +106,20 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
         this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new JobListener(this), this); // NEW: Job Listener
-        this.getServer().getPluginManager().registerEvents(new ProfileListener(), this); // NEW: Profile Listener
+        this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
+        this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
 
-        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs) enabled successfully!");
+        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs + Cooldowns) enabled successfully!");
     }
 
     @Override
     public void onDisable() {
         if (gangManager != null) {
             gangManager.saveGangs();
+        }
+        // UPDATED: Save cooldowns on shutdown
+        if (cooldownManager != null) {
+            cooldownManager.saveCooldowns();
         }
         getLogger().info("PrisonVaults disabled.");
     }
