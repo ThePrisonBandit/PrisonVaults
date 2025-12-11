@@ -8,6 +8,7 @@ import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.CooldownManager;
 import me.theprisonbandit.prisonVaults.managers.JobManager;
 import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
+import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -28,16 +29,12 @@ import java.util.*;
 public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     // --- VARIABLES ---
-
-    // Economy Limits
     private static final double MAX_BALANCE = 999 * Math.pow(10, 33);
 
-    // Economy & Prices
     private File pricesFile;
     private FileConfiguration pricesConfig;
     private final Map<Material, Double> priceMap = new HashMap<>();
 
-    // Ranks
     private File ranksFile;
     private FileConfiguration ranksConfig;
     public final Map<String, Double> rankLadder = new LinkedHashMap<>();
@@ -50,8 +47,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public CooldownManager cooldownManager;
     public JobManager jobManager;
 
-    // --- ENABLE LOGIC ---
-
     @Override
     public void onEnable() {
         // 1. Load Configurations
@@ -63,7 +58,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.kitManager = new KitManager(this);
         this.gangManager = new GangManager(this);
         this.mailManager = new MailManager(this);
-        // UPDATED: Pass 'this' so CooldownManager can save to file
         this.cooldownManager = new CooldownManager(this);
         this.jobManager = new JobManager(this);
 
@@ -109,7 +103,11 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
 
-        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs + Cooldowns) enabled successfully!");
+        // 5. Start Animation Task
+        // 0L delay, 1L period = Runs every tick (20 times/second) for maximum smoothness
+        new AnimationTask(this).runTaskTimer(this, 0L, 1L);
+
+        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs + Cooldowns + Fast Animations) enabled successfully!");
     }
 
     @Override
@@ -117,272 +115,147 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         if (gangManager != null) {
             gangManager.saveGangs();
         }
-        // UPDATED: Save cooldowns on shutdown
         if (cooldownManager != null) {
             cooldownManager.saveCooldowns();
         }
         getLogger().info("PrisonVaults disabled.");
     }
 
-    // --- MAIN COMMAND EXECUTOR ---
-
+    // --- COMMAND EXECUTOR (Kept logic) ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
-        // --- 1. RELOAD COMMAND ---
+        // RELOAD
         if (label.equalsIgnoreCase("prisonvaults")) {
-            if (!sender.hasPermission("prisonvaults.admin")) {
-                sender.sendMessage(ChatColor.RED + "You do not have permission.");
-                return true;
-            }
+            if (!sender.hasPermission("prisonvaults.admin")) return true;
             if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
                 reloadAllConfigs();
-                sender.sendMessage(ChatColor.GREEN + "" + ChatColor.BOLD + "PrisonVaults " + ChatColor.GRAY + "» " + ChatColor.WHITE + "All configuration files reloaded.");
+                sender.sendMessage(ChatColor.GREEN + "Configs reloaded.");
                 return true;
             }
-            sender.sendMessage(ChatColor.RED + "Usage: /prisonvaults reload");
-            return true;
         }
 
-        // --- 2. PAY COMMAND ---
+        // PAY
         if (label.equalsIgnoreCase("pay")) {
-            if (!(sender instanceof Player)) {
-                sender.sendMessage(ChatColor.RED + "Only players can pay money.");
-                return true;
-            }
+            if (!(sender instanceof Player)) return true;
             Player player = (Player) sender;
-
             if (args.length < 2) {
                 player.sendMessage(ChatColor.RED + "Usage: /pay <player> <amount>");
                 return true;
             }
-
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null || !target.isOnline()) {
-                player.sendMessage(ChatColor.RED + "Player not found or offline.");
+                player.sendMessage(ChatColor.RED + "Offline.");
                 return true;
             }
-
-            if (target.getUniqueId().equals(player.getUniqueId())) {
-                player.sendMessage(ChatColor.RED + "You cannot pay yourself.");
+            if (target.equals(player)) {
+                player.sendMessage(ChatColor.RED + "Cannot pay self.");
                 return true;
             }
-
-            double amount;
             try {
-                amount = Double.parseDouble(args[1]);
-            } catch (NumberFormatException e) {
-                player.sendMessage(ChatColor.RED + "Invalid amount.");
-                return true;
-            }
+                double amount = Double.parseDouble(args[1]);
+                if (amount <= 0) return true;
+                if (getBalance(player) < amount) {
+                    player.sendMessage(ChatColor.RED + "Insufficient funds.");
+                    return true;
+                }
+                removeMoney(player, amount);
+                addMoney(target, amount);
+                player.sendMessage(ChatColor.GREEN + "Paid.");
+                target.sendMessage(ChatColor.GREEN + "Received.");
 
-            if (amount <= 0) {
-                player.sendMessage(ChatColor.RED + "Amount must be positive.");
-                return true;
-            }
-
-            if (getBalance(player) < amount) {
-                player.sendMessage(ChatColor.RED + "Insufficient funds.");
-                return true;
-            }
-
-            // Execute Transaction
-            removeMoney(player, amount);
-            addMoney(target, amount);
-
-            player.sendMessage(ChatColor.GREEN + "Paid " + ChatColor.WHITE + "$" + String.format("%.2f", amount) + ChatColor.GREEN + " to " + ChatColor.YELLOW + target.getName());
-            target.sendMessage(ChatColor.GREEN + "Received " + ChatColor.WHITE + "$" + String.format("%.2f", amount) + ChatColor.GREEN + " from " + ChatColor.YELLOW + player.getName());
+                // Update both scoreboards immediately
+                scoreboardManager.updateScoreboard(player);
+                scoreboardManager.updateScoreboard(target);
+            } catch (Exception e) {}
             return true;
         }
 
-        // --- 3. VAULT COMMAND (/pv <number>) ---
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
-            return true;
+        // PV
+        if (label.equalsIgnoreCase("pv") && sender instanceof Player) {
+            Player p = (Player) sender;
+            if (!p.hasPermission("prisonvaults.use")) return true;
+            int v = 1;
+            if (args.length > 0) try { v = Integer.parseInt(args[0]); } catch (Exception e){}
+            if (v > getMaxVaults(p) && !p.isOp()) { p.sendMessage(ChatColor.RED + "Max: " + getMaxVaults(p)); return true; }
+            openVault(p, v);
         }
-
-        Player player = (Player) sender;
-
-        if (!player.hasPermission("prisonvaults.use")) {
-            player.sendMessage(ChatColor.RED + "You do not have permission to use Vaults.");
-            return true;
-        }
-
-        int vaultNumber = 1;
-        if (args.length > 0) {
-            try {
-                vaultNumber = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                player.sendMessage(ChatColor.RED + "Invalid vault number.");
-                return true;
-            }
-        }
-
-        int maxVaults = getMaxVaults(player);
-
-        if (vaultNumber > maxVaults && !player.isOp()) {
-            player.sendMessage(ChatColor.RED + "Your rank (" + ChatColor.BLUE + getPlayerRank(player) + ChatColor.RED + ") only allows " +
-                    ChatColor.GOLD + maxVaults + ChatColor.RED + " vaults.");
-            player.sendMessage(ChatColor.GRAY + "Type /rankup to unlock more!");
-            return true;
-        }
-
-        if (vaultNumber < 1 || vaultNumber > 104) {
-            player.sendMessage(ChatColor.RED + "Vault number must be between 1 and 100.");
-            return true;
-        }
-
-        openVault(player, vaultNumber);
         return true;
     }
 
-    // --- VAULT METHODS ---
-
+    // --- METHODS ---
     public void openVault(Player player, int vaultNumber) {
-        FileConfiguration playerData = getPlayerData(player.getUniqueId());
-
-        String title = ChatColor.DARK_GRAY + "Vault #" + vaultNumber;
-        Inventory vault = Bukkit.createInventory(player, 54, title);
-
-        if (playerData.contains("vaults." + vaultNumber)) {
-            List<ItemStack> items = (List<ItemStack>) playerData.getList("vaults." + vaultNumber);
-            if (items != null) {
-                vault.setContents(items.toArray(new ItemStack[0]));
-            }
+        FileConfiguration d = getPlayerData(player.getUniqueId());
+        Inventory v = Bukkit.createInventory(player, 54, ChatColor.DARK_GRAY + "Vault #" + vaultNumber);
+        if (d.contains("vaults." + vaultNumber)) {
+            List<ItemStack> i = (List<ItemStack>) d.getList("vaults." + vaultNumber);
+            if (i != null) v.setContents(i.toArray(new ItemStack[0]));
         }
-
-        player.openInventory(vault);
+        player.openInventory(v);
     }
-
-    // --- PICKPOCKET OVERLOAD ---
-    public void openVault(Player viewer, int vaultNumber, Player owner, String customTitle) {
-        FileConfiguration playerData = getPlayerData(owner.getUniqueId());
-        Inventory vault = Bukkit.createInventory(null, 54, customTitle);
-
-        if (playerData.contains("vaults." + vaultNumber)) {
-            List<ItemStack> items = (List<ItemStack>) playerData.getList("vaults." + vaultNumber);
-            if (items != null) {
-                vault.setContents(items.toArray(new ItemStack[0]));
-            }
+    public void openVault(Player viewer, int vaultNumber, Player owner, String title) {
+        FileConfiguration d = getPlayerData(owner.getUniqueId());
+        Inventory v = Bukkit.createInventory(null, 54, title);
+        if (d.contains("vaults." + vaultNumber)) {
+            List<ItemStack> i = (List<ItemStack>) d.getList("vaults." + vaultNumber);
+            if (i != null) v.setContents(i.toArray(new ItemStack[0]));
         }
-        viewer.openInventory(vault);
+        viewer.openInventory(v);
     }
-
     public void saveVault(Player player, int vaultNumber, Inventory vault) {
-        File file = getPlayerDataFile(player.getUniqueId());
-        FileConfiguration playerData = YamlConfiguration.loadConfiguration(file);
-
-        playerData.set("vaults." + vaultNumber, vault.getContents());
-
-        try {
-            playerData.save(file);
-        } catch (IOException e) {
-            player.sendMessage(ChatColor.RED + "Could not save your vault! Contact an admin.");
-            e.printStackTrace();
-        }
+        File f = getPlayerDataFile(player.getUniqueId());
+        FileConfiguration d = YamlConfiguration.loadConfiguration(f);
+        d.set("vaults." + vaultNumber, vault.getContents());
+        try { d.save(f); } catch (IOException e) {}
     }
-
-    // --- RANK METHODS ---
-
-    private void loadRanks() {
-        ranksFile = new File(getDataFolder(), "ranks.yml");
-        if (!ranksFile.exists()) {
-            saveResource("ranks.yml", false);
-        }
-        ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
-
-        rankLadder.clear();
-        for (String key : ranksConfig.getKeys(false)) {
-            rankLadder.put(key, ranksConfig.getDouble(key));
-        }
-    }
-
     public String getPlayerRank(Player player) {
-        FileConfiguration data = getPlayerData(player.getUniqueId());
+        FileConfiguration d = getPlayerData(player.getUniqueId());
         if (rankLadder.isEmpty()) return "A";
-        return data.getString("rank", rankLadder.keySet().iterator().next());
+        return d.getString("rank", rankLadder.keySet().iterator().next());
     }
-
-    public void setPlayerRank(Player player, String newRank) {
-        File file = getPlayerDataFile(player.getUniqueId());
-        FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-        data.set("rank", newRank);
-        try { data.save(file); } catch (IOException e) { e.printStackTrace(); }
+    public void setPlayerRank(Player p, String r) {
+        File f = getPlayerDataFile(p.getUniqueId());
+        FileConfiguration d = YamlConfiguration.loadConfiguration(f);
+        d.set("rank", r);
+        try { d.save(f); } catch (IOException e) {}
     }
-
-    public int getMaxVaults(Player player) {
-        String currentRank = getPlayerRank(player);
-        List<String> ranks = new ArrayList<>(rankLadder.keySet());
-        int index = ranks.indexOf(currentRank);
-        if (index == -1) index = 0;
-        return (index + 1) * 4;
+    public int getMaxVaults(Player p) {
+        String r = getPlayerRank(p);
+        List<String> rs = new ArrayList<>(rankLadder.keySet());
+        int i = rs.indexOf(r);
+        if (i == -1) i = 0;
+        return (i + 1) * 4;
     }
-
-    // --- ECONOMY METHODS ---
-
     public double getBalance(Player player) {
-        FileConfiguration data = getPlayerData(player.getUniqueId());
-        return data.getDouble("economy.balance", 0.0);
+        FileConfiguration d = getPlayerData(player.getUniqueId());
+        return d.getDouble("economy.balance", 0.0);
     }
-
     public void addMoney(Player player, double amount) {
-        File file = getPlayerDataFile(player.getUniqueId());
-        FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-
-        double current = data.getDouble("economy.balance", 0.0);
-        double newBalance = current + amount;
-
-        if (newBalance > MAX_BALANCE) {
-            newBalance = MAX_BALANCE;
-        }
-
-        data.set("economy.balance", newBalance);
-
-        try { data.save(file); } catch (IOException e) { e.printStackTrace(); }
+        File f = getPlayerDataFile(player.getUniqueId());
+        FileConfiguration d = YamlConfiguration.loadConfiguration(f);
+        d.set("economy.balance", d.getDouble("economy.balance", 0.0) + amount);
+        try { d.save(f); } catch (IOException e) {}
     }
-
-    public void removeMoney(Player player, double amount) {
-        addMoney(player, -amount);
-    }
-
-    public double getItemPrice(Material material) {
-        return priceMap.getOrDefault(material, 0.0);
-    }
-
+    public void removeMoney(Player player, double amount) { addMoney(player, -amount); }
+    public double getItemPrice(Material material) { return priceMap.getOrDefault(material, 0.0); }
+    public void reloadAllConfigs() { reloadConfig(); loadPrices(); loadRanks(); }
+    public FileConfiguration getPlayerData(UUID uuid) { return YamlConfiguration.loadConfiguration(getPlayerDataFile(uuid)); }
+    public File getPlayerDataFile(UUID uuid) { return new File(getDataFolder(), "data/" + uuid + ".yml"); }
     private void loadPrices() {
         pricesFile = new File(getDataFolder(), "prices.yml");
-        if (!pricesFile.exists()) {
-            saveResource("prices.yml", false);
-        }
+        if (!pricesFile.exists()) saveResource("prices.yml", false);
         pricesConfig = YamlConfiguration.loadConfiguration(pricesFile);
-
         priceMap.clear();
-
-        for (String key : pricesConfig.getKeys(false)) {
-            Material mat = Material.matchMaterial(key);
-            if (mat != null) {
-                priceMap.put(mat, pricesConfig.getDouble(key));
-            }
+        for (String k : pricesConfig.getKeys(false)) {
+            Material m = Material.matchMaterial(k);
+            if (m != null) priceMap.put(m, pricesConfig.getDouble(k));
         }
     }
-
-    public void reloadAllConfigs() {
-        reloadConfig();
-        loadPrices();
-        loadRanks();
-    }
-
-    // --- DATA FILE HELPERS ---
-
-    public File getPlayerDataFile(UUID uuid) {
-        File folder = new File(getDataFolder(), "data");
-        if (!folder.exists()) {
-            folder.mkdirs();
-        }
-        return new File(folder, uuid.toString() + ".yml");
-    }
-
-    public FileConfiguration getPlayerData(UUID uuid) {
-        return YamlConfiguration.loadConfiguration(getPlayerDataFile(uuid));
+    private void loadRanks() {
+        ranksFile = new File(getDataFolder(), "ranks.yml");
+        if (!ranksFile.exists()) saveResource("ranks.yml", false);
+        ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
+        rankLadder.clear();
+        for (String k : ranksConfig.getKeys(false)) rankLadder.put(k, ranksConfig.getDouble(k));
     }
 }

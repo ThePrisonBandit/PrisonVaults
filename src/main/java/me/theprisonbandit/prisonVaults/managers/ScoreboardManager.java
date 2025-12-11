@@ -134,4 +134,20 @@ public class ScoreboardManager {
     public void updateScoreboard(Player player) {
         setScoreboard(player);
     }
+
+    public void updateNameAnimation(Player player, int animationStep) {
+        org.bukkit.scoreboard.Scoreboard board = player.getScoreboard();
+        org.bukkit.scoreboard.Team nameTeam = board.getTeam("playerName");
+
+        if (nameTeam != null) {
+            FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
+            String preset = data.getString("chat-color");
+
+            // Get the new animated string
+            String animated = GradientUtils.getAnimatedGradient(player.getName(), preset, animationStep);
+
+            // Update suffix
+            nameTeam.setSuffix(animated);
+        }
+    }
 }

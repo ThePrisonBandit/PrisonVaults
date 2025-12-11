@@ -74,7 +74,7 @@ public class ColorifyCommand implements CommandExecutor {
 
         // 3. UPDATE SCOREBOARD IMMEDIATELY
         if (plugin.scoreboardManager != null) {
-            plugin.scoreboardManager.setScoreboard(player);
+            plugin.scoreboardManager.updateScoreboard(player);
         }
 
         player.sendMessage(ChatColor.GREEN + "Your name color has been updated to: " + selectedStyle.name().toLowerCase());

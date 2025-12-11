@@ -61,7 +61,7 @@ public class SellCommand implements CommandExecutor {
 
         // Give money & Update Scoreboard
         plugin.addMoney(player, totalValue);
-        plugin.scoreboardManager.setScoreboard(player);
+        plugin.scoreboardManager.updateScoreboard(player);
 
         // <--- UPDATED LINE BELOW --->
         player.sendMessage(ChatColor.GREEN + "Sold " + ChatColor.WHITE + amount + "x " + item.getType().toString() +
@@ -91,7 +91,7 @@ public class SellCommand implements CommandExecutor {
 
         if (totalProfit > 0) {
             plugin.addMoney(player, totalProfit);
-            plugin.scoreboardManager.setScoreboard(player);
+            plugin.scoreboardManager.updateScoreboard(player);
 
             // <--- UPDATED LINE BELOW --->
             player.sendMessage(ChatColor.GREEN + "Sold " + ChatColor.WHITE + totalItems + " items" +

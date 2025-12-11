@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.4'
+version: '1.0.5'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !

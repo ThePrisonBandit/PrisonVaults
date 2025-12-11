@@ -97,8 +97,8 @@ public class RobCommand implements CommandExecutor {
 
         // 8. Update Scoreboards
         if (plugin.scoreboardManager != null) {
-            plugin.scoreboardManager.setScoreboard(robber);
-            plugin.scoreboardManager.setScoreboard(victim);
+            plugin.scoreboardManager.updateScoreboard(robber);
+            plugin.scoreboardManager.updateScoreboard(victim);
         }
 
         // 9. Messages

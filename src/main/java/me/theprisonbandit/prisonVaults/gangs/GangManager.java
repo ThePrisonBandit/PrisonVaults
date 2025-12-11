@@ -17,7 +17,7 @@ public class GangManager {
     private final PrisonVaults plugin;
     private final Map<UUID, Gang> gangsById = new HashMap<>();
     private final Map<UUID, Gang> playerGangCache = new HashMap<>();
-
+    private final Map<UUID, Set<String>> pendingInvites = new HashMap<>();
     public final Map<UUID, String> chatInputMode = new HashMap<>();
 
     private File gangsFile;
@@ -28,101 +28,88 @@ public class GangManager {
         loadGangs();
     }
 
-    // --- Core Logic ---
+    // --- NEW: KICK LOGIC ---
+    public void kickMember(Gang gang, UUID memberId) {
+        // 1. Remove from data structures
+        gang.getMembers().remove(memberId);
+        playerGangCache.remove(memberId);
 
-    public Collection<Gang> getAllGangs() {
-        return gangsById.values();
-    }
+        // 2. Save
+        saveGangs();
 
-    /**
-     * Checks if a gang name is already taken (Case Insensitive)
-     */
-    public boolean gangNameExists(String name) {
-        for (Gang g : gangsById.values()) {
-            if (g.getName().equalsIgnoreCase(name)) return true;
+        // 3. Update the kicked player's scoreboard immediately
+        Player target = Bukkit.getPlayer(memberId);
+        if (target != null && target.isOnline()) {
+            target.sendMessage(ChatColor.RED + "You have been kicked from the gang.");
+            plugin.scoreboardManager.setScoreboard(target); // This resets "Gang: None"
         }
-        return false;
     }
 
-    /**
-     * Checks if a gang tag is already taken (Case Insensitive)
-     */
-    public boolean gangTagExists(String tag) {
-        for (Gang g : gangsById.values()) {
-            if (g.getTag().equalsIgnoreCase(tag)) return true;
+    // --- Invite/Join Logic ---
+    public void invitePlayer(Gang gang, Player target) {
+        pendingInvites.computeIfAbsent(target.getUniqueId(), k -> new HashSet<>()).add(gang.getName());
+        target.sendMessage(ChatColor.DARK_GRAY + "--------------------------------");
+        target.sendMessage(ChatColor.GREEN + "Invited to join " + ChatColor.GOLD + gang.getName());
+        target.sendMessage(ChatColor.YELLOW + "/gang join " + gang.getName());
+        target.sendMessage(ChatColor.DARK_GRAY + "--------------------------------");
+    }
+
+    public boolean hasInvite(Player player, String gangName) {
+        return pendingInvites.containsKey(player.getUniqueId()) &&
+                pendingInvites.get(player.getUniqueId()).contains(gangName);
+    }
+
+    public void joinGang(Player player, Gang gang) {
+        if (pendingInvites.containsKey(player.getUniqueId())) {
+            pendingInvites.get(player.getUniqueId()).remove(gang.getName());
         }
-        return false;
+        gang.getMembers().put(player.getUniqueId(), Rank.MEMBER);
+        playerGangCache.put(player.getUniqueId(), gang);
+        saveGangs();
+
+        if (plugin.scoreboardManager != null) {
+            plugin.scoreboardManager.setScoreboard(player);
+            Player owner = Bukkit.getPlayer(gang.getOwner());
+            if (owner != null) plugin.scoreboardManager.setScoreboard(owner);
+        }
+        player.sendMessage(ChatColor.GREEN + "Joined " + gang.getName() + "!");
     }
 
+    // --- Core Methods ---
     public Gang createGang(Player owner, String tag, String name) {
-        // 1. Check if player is already in a gang
-        if (getPlayerGang(owner.getUniqueId()) != null) {
-            owner.sendMessage(ChatColor.RED + "You are already in a gang!");
-            return null;
-        }
-
-        // 2. NEW: Check if Name is taken
-        if (gangNameExists(name)) {
-            owner.sendMessage(ChatColor.RED + "A gang with that name already exists!");
-            return null;
-        }
-
-        // 3. NEW: Check if Tag is taken
-        if (gangTagExists(tag)) {
-            owner.sendMessage(ChatColor.RED + "A gang with that tag already exists!");
-            return null;
-        }
-
+        if (getPlayerGang(owner.getUniqueId()) != null) { owner.sendMessage(ChatColor.RED + "Already in gang."); return null; }
+        if (gangNameExists(name) || gangTagExists(tag)) { owner.sendMessage(ChatColor.RED + "Name/Tag taken."); return null; }
         UUID id = UUID.randomUUID();
         Gang gang = new Gang(id, name, tag, owner.getUniqueId());
-
         gangsById.put(id, gang);
         playerGangCache.put(owner.getUniqueId(), gang);
         saveGangs();
-
-        // Update Scoreboard immediately
-        if (plugin.scoreboardManager != null) {
-            plugin.scoreboardManager.setScoreboard(owner);
-        }
-
+        plugin.scoreboardManager.setScoreboard(owner);
         return gang;
     }
 
     public void disbandGang(Gang gang) {
-        // Notify and update scoreboard for all members
         for (UUID memberId : gang.getMembers().keySet()) {
             playerGangCache.remove(memberId);
             Player p = Bukkit.getPlayer(memberId);
             if (p != null) {
-                p.sendMessage(ChatColor.RED + "Your gang has been disbanded.");
-                if (plugin.scoreboardManager != null) {
-                    plugin.scoreboardManager.setScoreboard(p);
-                }
+                p.sendMessage(ChatColor.RED + "Gang disbanded.");
+                plugin.scoreboardManager.setScoreboard(p);
             }
         }
         gangsById.remove(gang.getId());
-
-        // Remove from config file specifically to ensure it doesn't come back
-        if (gangsConfig.contains("gangs." + gang.getId())) {
-            gangsConfig.set("gangs." + gang.getId(), null);
-        }
-
+        if (gangsConfig.contains("gangs." + gang.getId())) gangsConfig.set("gangs." + gang.getId(), null);
         saveGangs();
     }
 
-    public Gang getPlayerGang(UUID playerId) {
-        return playerGangCache.get(playerId);
-    }
-
-    public Gang getGangByTag(String tag) {
-        for (Gang g : gangsById.values()) {
-            if (g.getTag().equalsIgnoreCase(tag)) return g;
-        }
-        return null;
-    }
+    public Gang getPlayerGang(UUID playerId) { return playerGangCache.get(playerId); }
+    public Gang getGangByName(String name) { for (Gang g : gangsById.values()) if (g.getName().equalsIgnoreCase(name)) return g; return null; }
+    public Gang getGangByTag(String tag) { for (Gang g : gangsById.values()) if (g.getTag().equalsIgnoreCase(tag)) return g; return null; }
+    public boolean gangNameExists(String name) { return getGangByName(name) != null; }
+    public boolean gangTagExists(String tag) { return getGangByTag(tag) != null; }
+    public Collection<Gang> getAllGangs() { return gangsById.values(); }
 
     // --- File I/O ---
-
     public void saveGangs() {
         for (Gang gang : gangsById.values()) {
             String path = "gangs." + gang.getId();
@@ -131,57 +118,38 @@ public class GangManager {
             gangsConfig.set(path + ".desc", gang.getDescription());
             gangsConfig.set(path + ".color", gang.getColor());
             gangsConfig.set(path + ".owner", gang.getOwner().toString());
-
-            // Save Members & Ranks
             List<String> memberList = new ArrayList<>();
             for (Map.Entry<UUID, Rank> entry : gang.getMembers().entrySet()) {
                 memberList.add(entry.getKey() + ":" + entry.getValue().name());
             }
             gangsConfig.set(path + ".members", memberList);
         }
-
-        try { gangsConfig.save(gangsFile); } catch (IOException e) { e.printStackTrace(); }
+        try { gangsConfig.save(gangsFile); } catch (IOException e) {}
     }
 
     private void loadGangs() {
         gangsFile = new File(plugin.getDataFolder(), "gangs.yml");
         if (!gangsFile.exists()) plugin.saveResource("gangs.yml", false);
         gangsConfig = YamlConfiguration.loadConfiguration(gangsFile);
-
         if (!gangsConfig.contains("gangs")) return;
 
         for (String key : gangsConfig.getConfigurationSection("gangs").getKeys(false)) {
             try {
                 ConfigurationSection sec = gangsConfig.getConfigurationSection("gangs." + key);
                 UUID id = UUID.fromString(key);
-                String name = sec.getString("name");
-                String tag = sec.getString("tag");
-                String ownerStr = sec.getString("owner");
-
-                if (name != null && tag != null && ownerStr != null) {
-                    UUID owner = UUID.fromString(ownerStr);
-                    Gang gang = new Gang(id, name, tag, owner);
-                    gang.setDescription(sec.getString("desc"));
-                    gang.setColor(sec.getString("color"));
-
-                    List<String> rawMembers = sec.getStringList("members");
-                    gang.getMembers().clear();
-
-                    for (String entry : rawMembers) {
-                        String[] parts = entry.split(":");
-                        if (parts.length >= 2) {
-                            UUID memberId = UUID.fromString(parts[0]);
-                            Rank rank = Rank.valueOf(parts[1]);
-                            gang.getMembers().put(memberId, rank);
-                            playerGangCache.put(memberId, gang);
-                        }
+                Gang gang = new Gang(id, sec.getString("name"), sec.getString("tag"), UUID.fromString(sec.getString("owner")));
+                gang.setDescription(sec.getString("desc"));
+                gang.setColor(sec.getString("color"));
+                for (String entry : sec.getStringList("members")) {
+                    String[] parts = entry.split(":");
+                    if (parts.length >= 2) {
+                        UUID mid = UUID.fromString(parts[0]);
+                        gang.getMembers().put(mid, Rank.valueOf(parts[1]));
+                        playerGangCache.put(mid, gang);
                     }
-                    gangsById.put(id, gang);
                 }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Failed to load gang: " + key);
-                e.printStackTrace();
-            }
+                gangsById.put(id, gang);
+            } catch (Exception e) {}
         }
     }
 }

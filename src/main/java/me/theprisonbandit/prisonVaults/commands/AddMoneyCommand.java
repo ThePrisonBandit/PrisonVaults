@@ -49,7 +49,7 @@ public class AddMoneyCommand implements CommandExecutor {
 
         // 5. Add the money & Update Target Scoreboard
         plugin.addMoney(target, amount);
-        plugin.scoreboardManager.setScoreboard(target);
+        plugin.scoreboardManager.updateScoreboard(target);
 
         // 6. Success Messages (UPDATED)
         sender.sendMessage(ChatColor.GREEN + "Added " + ChatColor.GOLD + "$" + NumberUtils.format(amount) +

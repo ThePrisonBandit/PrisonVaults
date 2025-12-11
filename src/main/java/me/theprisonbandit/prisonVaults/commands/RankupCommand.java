@@ -44,7 +44,7 @@ public class RankupCommand implements CommandExecutor {
         plugin.removeMoney(player, cost);
         plugin.setPlayerRank(player, nextRank);
         // Add this line to refresh the sidebar:
-        plugin.scoreboardManager.setScoreboard(player);
+        plugin.scoreboardManager.updateScoreboard(player);
         Bukkit.broadcastMessage(ChatColor.GOLD + "PrisonVaults >> " + ChatColor.WHITE + player.getName() +
                 ChatColor.GREEN + " ranked up to " + ChatColor.BLUE + nextRank + "!");
         return true;

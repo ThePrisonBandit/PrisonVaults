@@ -92,8 +92,10 @@ public class GangListener implements Listener {
             // Handle Member Actions
             if (item.getType() == Material.PLAYER_HEAD) {
                 handleMemberClick(e, gang, player, item);
-                // Refresh the GUI to show changes
-                openMembersGUI(player, gang);
+                // Refresh the GUI to show changes (unless kicked, which closes it)
+                if (player.getOpenInventory().getTitle().equals(ChatColor.DARK_GRAY + "Gang Members")) {
+                    openMembersGUI(player, gang);
+                }
             }
         }
 
@@ -237,17 +239,28 @@ public class GangListener implements Listener {
             else if (current == Rank.MEMBER) setRank(gang, targetId, Rank.THUG);
             else if (current == Rank.ELITE) setRank(gang, targetId, Rank.CO_LEADER);
             player.sendMessage(ChatColor.GREEN + "Promoted.");
-        } else if (e.getClick() == ClickType.RIGHT) {
+        }
+        else if (e.getClick() == ClickType.RIGHT) {
             if (current == Rank.CO_LEADER) setRank(gang, targetId, Rank.ELITE);
             else if (current == Rank.ELITE) setRank(gang, targetId, Rank.THUG);
             else if (current == Rank.THUG) setRank(gang, targetId, Rank.MEMBER);
             player.sendMessage(ChatColor.YELLOW + "Demoted.");
-        } else if (e.getClick() == ClickType.SHIFT_LEFT) {
-            gang.getMembers().remove(targetId);
-            plugin.gangManager.saveGangs();
+        }
+        else if (e.getClick() == ClickType.SHIFT_LEFT) {
+            // --- UPDATED KICK LOGIC ---
+
+            // 1. Prevent kicking the leader (just in case)
+            if (current == Rank.LEADER) {
+                player.sendMessage(ChatColor.RED + "You cannot kick the leader!");
+                return;
+            }
+
+            // 2. Use the new Manager method
+            // This handles removing from Map, Cache, File, and updating Scoreboard
+            plugin.gangManager.kickMember(gang, targetId);
+
             player.sendMessage(ChatColor.RED + "Kicked member.");
-            Player kicked = Bukkit.getPlayer(targetId);
-            if (kicked != null) plugin.scoreboardManager.setScoreboard(kicked);
+            player.closeInventory(); // Close menu to refresh state
         }
     }
 
