@@ -1,9 +1,11 @@
 package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
-import me.theprisonbandit.prisonVaults.utils.NumberUtils; // <--- NEW IMPORT
+import me.theprisonbandit.prisonVaults.utils.NumberUtils;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -20,52 +22,40 @@ public class SellCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Players only.");
-            return true;
-        }
-
+        if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
 
-        // Handle "/sell all"
         if (args.length > 0 && args[0].equalsIgnoreCase("all")) {
             sellAll(player);
-            return true;
+        } else {
+            sellHand(player);
         }
-
-        // Handle "/sell" (Hand)
-        sellHand(player);
         return true;
     }
 
     private void sellHand(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
-
         if (item == null || item.getType() == Material.AIR) {
-            player.sendMessage(ChatColor.RED + "You are not holding anything to sell.");
+            player.sendMessage(ChatColor.RED + "You are not holding anything.");
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
         double price = plugin.getItemPrice(item.getType());
-
         if (price <= 0) {
             player.sendMessage(ChatColor.RED + "This item cannot be sold.");
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
-        int amount = item.getAmount();
-        double totalValue = price * amount;
+        double totalValue = price * item.getAmount();
 
-        // Remove item
         player.getInventory().setItemInMainHand(null);
-
-        // Give money & Update Scoreboard
         plugin.addMoney(player, totalValue);
         plugin.scoreboardManager.updateScoreboard(player);
 
-        // <--- UPDATED LINE BELOW --->
-        player.sendMessage(ChatColor.GREEN + "Sold " + ChatColor.WHITE + amount + "x " + item.getType().toString() +
-                ChatColor.GREEN + " for " + ChatColor.GOLD + "$" + NumberUtils.format(totalValue));
+        player.sendMessage(ChatColor.GREEN + "Sold " + item.getType() + " for $" + NumberUtils.format(totalValue));
+        SoundUtils.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
     }
 
     private void sellAll(Player player) {
@@ -74,16 +64,11 @@ public class SellCommand implements CommandExecutor {
 
         for (int i = 0; i < player.getInventory().getSize(); i++) {
             ItemStack item = player.getInventory().getItem(i);
-
             if (item != null && item.getType() != Material.AIR) {
                 double price = plugin.getItemPrice(item.getType());
-
                 if (price > 0) {
-                    int amount = item.getAmount();
-                    totalProfit += (price * amount);
-                    totalItems += amount;
-
-                    // Remove item
+                    totalProfit += (price * item.getAmount());
+                    totalItems += item.getAmount();
                     player.getInventory().setItem(i, null);
                 }
             }
@@ -92,12 +77,11 @@ public class SellCommand implements CommandExecutor {
         if (totalProfit > 0) {
             plugin.addMoney(player, totalProfit);
             plugin.scoreboardManager.updateScoreboard(player);
-
-            // <--- UPDATED LINE BELOW --->
-            player.sendMessage(ChatColor.GREEN + "Sold " + ChatColor.WHITE + totalItems + " items" +
-                    ChatColor.GREEN + " for a total of " + ChatColor.GOLD + "$" + NumberUtils.format(totalProfit));
+            player.sendMessage(ChatColor.GREEN + "Sold " + totalItems + " items for $" + NumberUtils.format(totalProfit));
+            SoundUtils.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         } else {
-            player.sendMessage(ChatColor.RED + "You have no sellable items in your inventory.");
+            player.sendMessage(ChatColor.RED + "No sellable items.");
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
         }
     }
 }

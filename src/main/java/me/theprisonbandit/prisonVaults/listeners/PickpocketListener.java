@@ -1,15 +1,16 @@
 package me.theprisonbandit.prisonVaults.listeners;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound; // Import
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -86,6 +87,9 @@ public class PickpocketListener implements Listener {
         // Apply Cooldown immediately so they can't spam open
         plugin.cooldownManager.setCooldown(thief.getUniqueId(), "pickpocket", COOLDOWN_SECONDS);
         thief.sendMessage(ChatColor.GRAY + "§oYou quietly pry open one of " + victim.getName() + "'s vaults...");
+
+        // NEW: Stealth Start Sound
+        SoundUtils.playSound(thief, Sound.ITEM_ARMOR_EQUIP_LEATHER, 1.0f, 0.5f);
     }
 
     // --- 2. HANDLE STEAL ATTEMPT ---
@@ -109,7 +113,6 @@ public class PickpocketListener implements Listener {
 
         // --- ROLL THE CHANCE ---
         // Parse Victim Name and Vault Number from title
-        // Title format: "Stealing: Name #1"
         try {
             String cleanTitle = ChatColor.stripColor(title).replace("Stealing: ", "");
             String[] parts = cleanTitle.split(" #");
@@ -126,6 +129,9 @@ public class PickpocketListener implements Listener {
                 if (victim != null && victim.isOnline()) {
                     victim.sendMessage(ChatColor.RED + "§lALERT! §c" + thief.getName() + " tried to pickpocket item from your Vault #" + vaultNum + "!");
                 }
+
+                // NEW: Busted Sound (Plays for both)
+                SoundUtils.playDualSound(thief, victim, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 return;
             }
 
@@ -141,13 +147,16 @@ public class PickpocketListener implements Listener {
                 // If online, use main method
                 plugin.saveVault(victim, vaultNum, event.getClickedInventory());
                 victim.sendMessage(ChatColor.RED + "§lYOU WERE ROBBED! §c" + thief.getName() + " stole an item from Vault #" + vaultNum + "!");
-            } else {
-                // Offline logic (advanced, but for now we assume online as per shift-click req)
-                // Since Shift-Right click requires Entity, they must be online.
+
+                // NEW: Victim Alert
+                SoundUtils.playSound(victim, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             }
 
             thief.closeInventory();
             thief.sendMessage(ChatColor.GREEN + "§lSUCCESS! §aYou managed to steal a " + clickedItem.getType().name() + "!");
+
+            // NEW: Success Sound
+            SoundUtils.playSound(thief, Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
 
         } catch (Exception e) {
             thief.sendMessage(ChatColor.RED + "Error processing pickpocket.");

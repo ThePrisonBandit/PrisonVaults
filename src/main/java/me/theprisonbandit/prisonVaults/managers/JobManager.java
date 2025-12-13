@@ -1,9 +1,11 @@
 package me.theprisonbandit.prisonVaults.managers;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound; // Import
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -80,9 +82,14 @@ public class JobManager {
 
             assignQuest(player); // Give first quest
             player.sendMessage(ChatColor.GREEN + "You have joined the Cooking job! Start cooking food!");
+
+            // NEW: Join Sound
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
+
             updateScoreboard(player);
         } else {
             player.sendMessage(ChatColor.RED + "That job does not exist. Available: Cooking");
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
         }
     }
 
@@ -98,6 +105,8 @@ public class JobManager {
         questProgress.remove(player.getUniqueId());
 
         player.sendMessage(ChatColor.YELLOW + "You have quit your job.");
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 0.5f);
+
         updateScoreboard(player);
     }
 
@@ -114,13 +123,14 @@ public class JobManager {
         questProgress.put(player.getUniqueId(), 0);
 
         player.sendMessage(ChatColor.GOLD + "§lNEW QUEST: §eCook 16 " + formatMat(target) + " to get paid!");
+
+        // NEW: New Quest Sound
+        SoundUtils.playSound(player, Sound.ITEM_BOOK_PAGE_TURN, 1.0f, 1.0f);
     }
 
     public void addQuestProgress(Player player, Material material, int amount) {
         if (!activeQuests.containsKey(player.getUniqueId())) return;
 
-        // We track the RAW material (e.g. they smelted BEEF into STEAK)
-        // For simplicity in this example, we assume if they pull STEAK from furnace, they smelted BEEF.
         Material targetRaw = activeQuests.get(player.getUniqueId());
         Material result = getSmeltResult(targetRaw);
 
@@ -132,7 +142,6 @@ public class JobManager {
                 completeQuest(player);
             } else {
                 questProgress.put(player.getUniqueId(), current + amount);
-                // Optional: Action bar message for progress
             }
         }
     }
@@ -146,6 +155,9 @@ public class JobManager {
         addXp(player, 10); // 10 XP per quest
 
         player.sendMessage(ChatColor.GREEN + "§lQUEST COMPLETE! §aYou earned §2$" + pay + " §aand 10 Job XP.");
+
+        // NEW: Completion Sound
+        SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
 
         // Assign new one
         assignQuest(player);
@@ -168,7 +180,9 @@ public class JobManager {
         if (nextRank != null) {
             data.set("job.rank", nextRank.name());
             player.sendMessage(ChatColor.LIGHT_PURPLE + "§lPROMOTION! §dYou are now a " + nextRank.name() + "! Your pay has increased.");
-            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+
+            // NEW: Promotion Sound
+            SoundUtils.playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
 
         saveData(player, data);

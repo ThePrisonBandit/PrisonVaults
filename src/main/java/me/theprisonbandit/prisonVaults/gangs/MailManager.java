@@ -1,8 +1,10 @@
 package me.theprisonbandit.prisonVaults.gangs;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -23,9 +25,8 @@ public class MailManager {
         FileConfiguration data = YamlConfiguration.loadConfiguration(file);
 
         List<String> mails = data.getStringList("inbox");
-        // Format: Timestamp|Sender|Message
         String mailEntry = System.currentTimeMillis() + "|" + senderName + "|" + message;
-        mails.add(0, mailEntry); // Add to top
+        mails.add(0, mailEntry);
 
         data.set("inbox", mails);
         try { data.save(file); } catch (IOException e) { e.printStackTrace(); }
@@ -33,8 +34,13 @@ public class MailManager {
         Player target = Bukkit.getPlayer(targetUUID);
         if (target != null) {
             target.sendMessage(ChatColor.GOLD + "You have new mail! Type /inbox to read.");
+            // NEW: Play sound
+            SoundUtils.playSound(target, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 2.0f);
         }
     }
+
+    // ... (Keep existing sendGangMail, getInbox, clearInbox methods) ...
+    // Note: You don't need to change other methods here unless you want sounds there too.
 
     public void sendGangMail(Player sender, String message) {
         Gang gang = plugin.gangManager.getPlayerGang(sender.getUniqueId());

@@ -2,6 +2,7 @@ package me.theprisonbandit.prisonVaults.listeners;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.kits.Kit;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -53,11 +54,16 @@ public class KitShopListener implements Listener {
             plugin.kitManager.giveKit(player, targetKit.getName());
 
             player.sendMessage(ChatColor.GREEN + "Purchased " + ChatColor.YELLOW + targetKit.getName() + " Kit" + ChatColor.GREEN + "!");
-            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+
+            // NEW: Success Sound
+            SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+
             player.closeInventory();
         } else {
             player.sendMessage(ChatColor.RED + "You cannot afford this kit!");
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1, 1);
+
+            // NEW: Fail Sound
+            SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1, 1);
         }
     }
 }

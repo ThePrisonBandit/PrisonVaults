@@ -1,12 +1,13 @@
 package me.theprisonbandit.prisonVaults.listeners;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.ChatColor;
+import org.bukkit.Sound; // Import
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-// Add this import
 import org.bukkit.event.player.PlayerJoinEvent;
 
 public class VaultListener implements Listener {
@@ -20,7 +21,6 @@ public class VaultListener implements Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         // Basic check to see if the title starts with our Vault format
-        // In a pro version, you might use a hidden key or a Map<UUID, Int> to track open vaults
         String title = event.getView().getTitle();
 
         // Strip colors to check the raw text
@@ -37,13 +37,15 @@ public class VaultListener implements Listener {
                 // Save the data
                 plugin.saveVault(player, vaultNumber, event.getInventory());
 
+                // NEW: Close Sound
+                SoundUtils.playSound(player, Sound.BLOCK_CHEST_CLOSE, 1.0f, 1.0f);
+
             } catch (NumberFormatException e) {
                 // If title was spoofed or weird, just ignore
             }
         }
     }
 
-    // Inside the VaultListener class...
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         // Update the scoreboard immediately when they join

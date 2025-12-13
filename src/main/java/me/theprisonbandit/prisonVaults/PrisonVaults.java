@@ -9,9 +9,11 @@ import me.theprisonbandit.prisonVaults.managers.CooldownManager;
 import me.theprisonbandit.prisonVaults.managers.JobManager;
 import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import SoundUtils
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound; // Import Sound
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -29,6 +31,7 @@ import java.util.*;
 public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     // --- VARIABLES ---
+    // 999 Decillion Cap
     private static final double MAX_BALANCE = 999 * Math.pow(10, 33);
 
     private File pricesFile;
@@ -104,7 +107,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
 
         // 5. Start Animation Task
-        // 0L delay, 1L period = Runs every tick (20 times/second) for maximum smoothness
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
         getLogger().info("PrisonVaults (Full Core + Gangs + Jobs + Cooldowns + Fast Animations) enabled successfully!");
@@ -131,6 +133,11 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
             if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
                 reloadAllConfigs();
                 sender.sendMessage(ChatColor.GREEN + "Configs reloaded.");
+
+                // NEW: Success Sound
+                if (sender instanceof Player) {
+                    SoundUtils.playSound((Player) sender, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
+                }
                 return true;
             }
         }
@@ -141,15 +148,21 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
             Player player = (Player) sender;
             if (args.length < 2) {
                 player.sendMessage(ChatColor.RED + "Usage: /pay <player> <amount>");
+                // NEW: Error Sound
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return true;
             }
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null || !target.isOnline()) {
                 player.sendMessage(ChatColor.RED + "Offline.");
+                // NEW: Error Sound
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return true;
             }
             if (target.equals(player)) {
                 player.sendMessage(ChatColor.RED + "Cannot pay self.");
+                // NEW: Error Sound
+                SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 return true;
             }
             try {
@@ -157,12 +170,17 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
                 if (amount <= 0) return true;
                 if (getBalance(player) < amount) {
                     player.sendMessage(ChatColor.RED + "Insufficient funds.");
+                    // NEW: Error Sound
+                    SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                     return true;
                 }
                 removeMoney(player, amount);
                 addMoney(target, amount);
                 player.sendMessage(ChatColor.GREEN + "Paid.");
                 target.sendMessage(ChatColor.GREEN + "Received.");
+
+                // NEW: Dual Success Sound (Money Pickup)
+                SoundUtils.playDualSound(player, target, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
 
                 // Update both scoreboards immediately
                 scoreboardManager.updateScoreboard(player);
@@ -174,10 +192,20 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // PV
         if (label.equalsIgnoreCase("pv") && sender instanceof Player) {
             Player p = (Player) sender;
-            if (!p.hasPermission("prisonvaults.use")) return true;
+            if (!p.hasPermission("prisonvaults.use")) {
+                SoundUtils.playSound(p, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                return true;
+            }
             int v = 1;
             if (args.length > 0) try { v = Integer.parseInt(args[0]); } catch (Exception e){}
-            if (v > getMaxVaults(p) && !p.isOp()) { p.sendMessage(ChatColor.RED + "Max: " + getMaxVaults(p)); return true; }
+            if (v > getMaxVaults(p) && !p.isOp()) {
+                p.sendMessage(ChatColor.RED + "Max: " + getMaxVaults(p));
+                SoundUtils.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                return true;
+            }
+
+            // NEW: Open Sound
+            SoundUtils.playSound(p, Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
             openVault(p, v);
         }
         return true;
@@ -230,13 +258,34 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         FileConfiguration d = getPlayerData(player.getUniqueId());
         return d.getDouble("economy.balance", 0.0);
     }
+
+    // UPDATED: ADD MONEY WITH HARD CAP
     public void addMoney(Player player, double amount) {
         File f = getPlayerDataFile(player.getUniqueId());
         FileConfiguration d = YamlConfiguration.loadConfiguration(f);
-        d.set("economy.balance", d.getDouble("economy.balance", 0.0) + amount);
+
+        double currentBalance = d.getDouble("economy.balance", 0.0);
+
+        // --- CAP LOGIC ---
+        if (currentBalance + amount > MAX_BALANCE) {
+            // Set them to exactly the MAX, don't go over
+            d.set("economy.balance", MAX_BALANCE);
+        } else {
+            d.set("economy.balance", currentBalance + amount);
+        }
+        // -----------------
+
         try { d.save(f); } catch (IOException e) {}
     }
-    public void removeMoney(Player player, double amount) { addMoney(player, -amount); }
+
+    public void removeMoney(Player player, double amount) {
+        File f = getPlayerDataFile(player.getUniqueId());
+        FileConfiguration d = YamlConfiguration.loadConfiguration(f);
+        // Direct subtraction, no cap needed for removing
+        d.set("economy.balance", d.getDouble("economy.balance", 0.0) - amount);
+        try { d.save(f); } catch (IOException e) {}
+    }
+
     public double getItemPrice(Material material) { return priceMap.getOrDefault(material, 0.0); }
     public void reloadAllConfigs() { reloadConfig(); loadPrices(); loadRanks(); }
     public FileConfiguration getPlayerData(UUID uuid) { return YamlConfiguration.loadConfiguration(getPlayerDataFile(uuid)); }

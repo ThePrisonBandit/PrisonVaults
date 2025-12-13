@@ -3,9 +3,11 @@ package me.theprisonbandit.prisonVaults.commands;
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.gangs.Gang;
 import me.theprisonbandit.prisonVaults.gangs.Rank;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // New Import
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound; // New Import
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -44,10 +46,15 @@ public class GangCommand implements CommandExecutor {
         if (sub.equals("create")) {
             if (args.length < 3) {
                 player.sendMessage(ChatColor.RED + "Usage: /gang create <Tag> <Name>");
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f); // Error sound
                 return true;
             }
             if (plugin.gangManager.createGang(player, args[1], args[2]) != null) {
                 player.sendMessage(ChatColor.GREEN + "Gang created!");
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f); // Success sound
+            } else {
+                // If creation returned null (likely name taken), play error
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             }
             return true;
         }
@@ -56,7 +63,11 @@ public class GangCommand implements CommandExecutor {
 
         // --- INFO ---
         if (sub.equals("info")) {
-            if (gang == null) { player.sendMessage(ChatColor.RED + "No gang."); return true; }
+            if (gang == null) {
+                player.sendMessage(ChatColor.RED + "No gang.");
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                return true;
+            }
             player.sendMessage(ChatColor.GRAY + "--- " + gang.getFormattedName() + ChatColor.GRAY + " ---");
             player.sendMessage(ChatColor.YELLOW + "Desc: " + ChatColor.WHITE + gang.getDescription());
             player.sendMessage(ChatColor.YELLOW + "Leader: " + ChatColor.WHITE + Bukkit.getOfflinePlayer(gang.getOwner()).getName());
@@ -79,6 +90,10 @@ public class GangCommand implements CommandExecutor {
             // Use new Manager logic
             plugin.gangManager.invitePlayer(gang, target);
             player.sendMessage(ChatColor.GREEN + "Invited " + target.getName() + " to " + gang.getName());
+
+            // Sounds
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f); // Success for inviter
+            SoundUtils.playSound(target, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 2.0f); // Notification for target
             return true;
         }
 
@@ -102,6 +117,9 @@ public class GangCommand implements CommandExecutor {
 
             // Join logic
             plugin.gangManager.joinGang(player, targetGang);
+
+            // Join Success Sound (Celebration)
+            SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
             return true;
         }
 
@@ -109,7 +127,10 @@ public class GangCommand implements CommandExecutor {
         if (sub.equals("manage")) {
             if (gang == null) return error(player, "No gang.");
             if (gang.getMembers().get(player.getUniqueId()) != Rank.LEADER) return error(player, "Leader only.");
+
             openManagerGUI(player, gang);
+            // GUI Open sound
+            SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
             return true;
         }
 
@@ -176,6 +197,7 @@ public class GangCommand implements CommandExecutor {
 
     private boolean error(Player p, String msg) {
         p.sendMessage(ChatColor.RED + msg);
+        SoundUtils.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f); // Universal error sound
         return true;
     }
 

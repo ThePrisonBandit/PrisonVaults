@@ -1,8 +1,10 @@
 package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -36,17 +38,20 @@ public class RankupCommand implements CommandExecutor {
 
         if (balance < cost) {
             double needed = cost - balance;
-            player.sendMessage(ChatColor.RED + "You need " + ChatColor.GOLD + "$" + String.format("%.2f", needed) +
-                    ChatColor.RED + " more to reach rank " + ChatColor.BLUE + nextRank);
+            player.sendMessage(ChatColor.RED + "You need $" + String.format("%.2f", needed) + " more.");
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return true;
         }
 
         plugin.removeMoney(player, cost);
         plugin.setPlayerRank(player, nextRank);
-        // Add this line to refresh the sidebar:
         plugin.scoreboardManager.updateScoreboard(player);
-        Bukkit.broadcastMessage(ChatColor.GOLD + "PrisonVaults >> " + ChatColor.WHITE + player.getName() +
-                ChatColor.GREEN + " ranked up to " + ChatColor.BLUE + nextRank + "!");
+
+        Bukkit.broadcastMessage(ChatColor.GOLD + "PrisonVaults >> " + player.getName() + " ranked up to " + nextRank + "!");
+
+        // Success Sound
+        SoundUtils.playSound(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+
         return true;
     }
 

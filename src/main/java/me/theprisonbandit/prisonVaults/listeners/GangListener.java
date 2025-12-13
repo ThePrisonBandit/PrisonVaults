@@ -3,9 +3,11 @@ package me.theprisonbandit.prisonVaults.listeners;
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.gangs.Gang;
 import me.theprisonbandit.prisonVaults.gangs.Rank;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound; // Import
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -58,6 +60,7 @@ public class GangListener implements Listener {
                 // Security Check: Only Owner can disband
                 if (!gang.getOwner().equals(player.getUniqueId())) {
                     player.sendMessage(ChatColor.RED + "Only the Gang Owner can disband the gang!");
+                    SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                     player.closeInventory();
                     return;
                 }
@@ -65,11 +68,18 @@ public class GangListener implements Listener {
                 // Execute Disband
                 plugin.gangManager.disbandGang(gang);
                 player.closeInventory();
+
+                // NEW: Disband Sound
+                SoundUtils.playSound(player, Sound.BLOCK_ANVIL_BREAK, 1.0f, 0.5f);
             }
 
             // OPEN MEMBERS GUI (Clicking the Leader Head)
             else if (item.getType() == Material.PLAYER_HEAD) {
                 openMembersGUI(player, gang);
+            }
+            // NEW: Generic Click Sound
+            else {
+                SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
             }
         }
 
@@ -86,6 +96,7 @@ public class GangListener implements Listener {
             if (item.getType() == Material.ARROW) {
                 player.closeInventory();
                 player.sendMessage(ChatColor.YELLOW + "Type /gang manager to return to the main menu.");
+                SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
                 return;
             }
 
@@ -114,6 +125,9 @@ public class GangListener implements Listener {
                 player.closeInventory();
 
                 refreshGangScoreboards(gang);
+
+                // NEW: Success Sound
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
             }
         }
 
@@ -124,6 +138,9 @@ public class GangListener implements Listener {
                 plugin.mailManager.clearInbox(e.getWhoClicked().getUniqueId());
                 e.getWhoClicked().closeInventory();
                 e.getWhoClicked().sendMessage(ChatColor.RED + "Inbox cleared.");
+
+                // NEW: Clear Sound
+                SoundUtils.playSound((Player) e.getWhoClicked(), Sound.UI_BUTTON_CLICK, 1.0f, 0.5f);
             }
         }
     }
@@ -146,6 +163,9 @@ public class GangListener implements Listener {
                 plugin.gangManager.saveGangs();
                 e.getPlayer().sendMessage(ChatColor.GREEN + "Setting updated!");
                 refreshGangScoreboards(gang);
+
+                // NEW: Success Sound
+                SoundUtils.playSound(e.getPlayer(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             }
         }
     }
@@ -186,6 +206,7 @@ public class GangListener implements Listener {
         inv.setItem(49, back); // Bottom Center
 
         player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
     }
 
     private void refreshGangScoreboards(Gang gang) {
@@ -210,6 +231,7 @@ public class GangListener implements Listener {
         inv.setItem(22, createItem(Material.WHITE_WOOL, ChatColor.WHITE + "White"));
 
         player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
     }
 
     private String getColorFromItem(Material mat) {
@@ -239,12 +261,18 @@ public class GangListener implements Listener {
             else if (current == Rank.MEMBER) setRank(gang, targetId, Rank.THUG);
             else if (current == Rank.ELITE) setRank(gang, targetId, Rank.CO_LEADER);
             player.sendMessage(ChatColor.GREEN + "Promoted.");
+
+            // NEW: Promote Sound
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 2.0f);
         }
         else if (e.getClick() == ClickType.RIGHT) {
             if (current == Rank.CO_LEADER) setRank(gang, targetId, Rank.ELITE);
             else if (current == Rank.ELITE) setRank(gang, targetId, Rank.THUG);
             else if (current == Rank.THUG) setRank(gang, targetId, Rank.MEMBER);
             player.sendMessage(ChatColor.YELLOW + "Demoted.");
+
+            // NEW: Demote Sound
+            SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
         }
         else if (e.getClick() == ClickType.SHIFT_LEFT) {
             // --- UPDATED KICK LOGIC ---
@@ -252,14 +280,17 @@ public class GangListener implements Listener {
             // 1. Prevent kicking the leader (just in case)
             if (current == Rank.LEADER) {
                 player.sendMessage(ChatColor.RED + "You cannot kick the leader!");
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return;
             }
 
             // 2. Use the new Manager method
-            // This handles removing from Map, Cache, File, and updating Scoreboard
             plugin.gangManager.kickMember(gang, targetId);
 
             player.sendMessage(ChatColor.RED + "Kicked member.");
+            // NEW: Kick Sound
+            SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+
             player.closeInventory(); // Close menu to refresh state
         }
     }
@@ -268,6 +299,7 @@ public class GangListener implements Listener {
         p.closeInventory();
         plugin.gangManager.chatInputMode.put(p.getUniqueId(), mode);
         p.sendMessage(ChatColor.GREEN + "Type the new value in chat now...");
+        SoundUtils.playSound(p, Sound.UI_BUTTON_CLICK, 1.0f, 2.0f);
     }
 
     private void setRank(Gang g, UUID u, Rank r) {
