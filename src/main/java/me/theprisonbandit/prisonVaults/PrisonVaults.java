@@ -5,16 +5,13 @@ import me.theprisonbandit.prisonVaults.gangs.GangManager;
 import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
-import me.theprisonbandit.prisonVaults.managers.CooldownManager;
-import me.theprisonbandit.prisonVaults.managers.JobManager;
-import me.theprisonbandit.prisonVaults.managers.JobScheduleManager;
-import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
+import me.theprisonbandit.prisonVaults.managers.*;
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
 import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer; // Imported OfflinePlayer
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -52,6 +49,10 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public JobManager jobManager;
     public JobScheduleManager jobScheduleManager;
 
+    // NEW: Staff Managers
+    public RankManager rankManager;
+    public StaffMailManager staffMailManager;
+
     @Override
     public void onEnable() {
         // 1. Load Configurations
@@ -66,6 +67,10 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.cooldownManager = new CooldownManager(this);
         this.jobManager = new JobManager(this);
         this.jobScheduleManager = new JobScheduleManager(this);
+
+        // NEW: Staff Managers
+        this.rankManager = new RankManager(this);
+        this.staffMailManager = new StaffMailManager(this);
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -94,39 +99,44 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // Jobs & Profile
         this.getCommand("job").setExecutor(new JobCommand(this));
 
-        // Profile Commands (Updated to share executor)
+        // Profile Commands
         ProfileCommand profileCmd = new ProfileCommand(this);
         this.getCommand("myprofile").setExecutor(profileCmd);
         this.getCommand("whois").setExecutor(profileCmd);
         this.getCommand("setbio").setExecutor(profileCmd);
         this.getCommand("setdesc").setExecutor(profileCmd);
 
-        // Configurations
-        ConfigCommand cfgCmd = new ConfigCommand(this);
-        this.getCommand("pvconfig").setExecutor(cfgCmd);
-
-        // Scoreboard
+        // Configurations & Scoreboard
+        this.getCommand("pvconfig").setExecutor(new ConfigCommand(this));
         this.getCommand("pvscoreboard").setExecutor(new ScoreboardCommand(this));
 
-        //Shop
+        // Shop & Help
         this.getCommand("pvshop").setExecutor(new ShopCommand(this));
-
-        //Help
         this.getCommand("pvhelp").setExecutor(new HelpCommand());
+
+        // NEW: Staff Commands
+        this.getCommand("staff").setExecutor(new StaffManagerCommand(this));
+        this.getCommand("setstaff").setExecutor(new SetStaffCommand(this));
+        this.getCommand("staffmail").setExecutor(new StaffMailCommand(this));
 
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+        this.getServer().getPluginManager().registerEvents(new ChatListener(this), this); // Updated logic inside
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
         this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
 
+        // NEW: Register Staff & Ability Listeners
+        this.getServer().getPluginManager().registerEvents(new StaffManagementListener(this), this);
+        this.getServer().getPluginManager().registerEvents(this.staffMailManager, this); // For Join Notifications
+        this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this); // For Shivs/MedKits
+
         // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
-        getLogger().info("PrisonVaults (Full Core + Gangs + Jobs + Cooldowns + Fast Animations) enabled successfully!");
+        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs) enabled successfully!");
     }
 
     @Override
@@ -136,7 +146,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         getLogger().info("PrisonVaults disabled.");
     }
 
-    // --- COMMAND EXECUTOR ---
+    // --- COMMAND EXECUTOR (PV & PAY) ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // RELOAD
@@ -235,7 +245,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         try { d.save(f); } catch (IOException e) {}
     }
 
-    // --- RANK & BALANCE (Updated for OfflinePlayer) ---
+    // --- RANK & BALANCE ---
 
     // 1. Get Rank
     public String getPlayerRank(OfflinePlayer player) {

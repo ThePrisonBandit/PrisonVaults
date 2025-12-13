@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.7'
+version: '1.0.8'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -19,48 +19,48 @@ commands:
     usage: /balance or /bal or /money
     aliases: [bal, money]
   rankup:
-      description: Rank up to the next level
-      usage: /rankup
+    description: Rank up to the next level
+    usage: /rankup
   addmoney:
-      description: Give money to a player
-      usage: /addmoney <player> <amount>
+    description: Give money to a player
+    usage: /addmoney <player> <amount>
   colorify:
-      description: Set a gradient name color
-      usage: /colorify <preset>
-      aliases: [colorname, color]
+    description: Set a gradient name color
+    usage: /colorify <preset>
+    aliases: [colorname, color]
   kit:
-      description: Get a kit
-      usage: /kit <name>
+    description: Get a kit
+    usage: /kit <name>
   kits:
-      description: List kits
-      usage: /kits
+    description: List kits
+    usage: /kits
   createkit:
-      description: Admin create kit
-      usage: /createkit <name> <color> <tool> <armor> <enchant> <price>
+    description: Admin create kit
+    usage: /createkit <name> <color> <tool> <armor> <enchant> <price>
   buykit:
-      description: Open kit shop
-      usage: /buykit
+    description: Open kit shop
+    usage: /buykit
   gang:
-      description: Main gang command
-      usage: /gang
+    description: Main gang command
+    usage: /gang
   mail:
-      description: Send mail
-      usage: /mail <gang> or <gang member>
+    description: Send mail
+    usage: /mail <gang> or <gang member>
   inbox:
-      description: Check mail
-      usage: /inbox
+    description: Check mail
+    usage: /inbox
   gangs:
-      description: List all gangs on the server
-      usage: /gangs
+    description: List all gangs on the server
+    usage: /gangs
   prisonvaults:
-      description: Reload all configuration files
-      usage: /prisonvaults reload
+    description: Reload all configuration files
+    usage: /prisonvaults reload
   pay:
-      description: Send money to others
-      usage: /pay <player> <amount>]
+    description: Send money to others
+    usage: /pay <player> <amount>]
   rob:
-      description: Attempt to rob a player (Very low chance!)
-      usage: /rob <player>
+    description: Attempt to rob a player (Very low chance!)
+    usage: /rob <player>
   job:
     description: Join or quit jobs
     usage: /job <join|quit|shop|info|promote>
@@ -77,27 +77,37 @@ commands:
   setdesc:
     description: Alias for setbio
     usage: /setdesc <text>
-  prisonvaults reload:
-      description: Reload the plugin configuration
-      usage: /prisonvaults reload
   pvconfig:
-      description: Open the prisonvaults config file and edit it
-      usage: /pvconfig
+    description: Open the prisonvaults config file and edit it
+    usage: /pvconfig
   pvscoreboard:
-      description: Toggle the prisonvaults scoreboard
-      usage: /pvscoreboard
+    description: Toggle the prisonvaults scoreboard
+    usage: /pvscoreboard
   pvshop:
-      description: Open the job ingredient shops.
-      usage: /pvshop <messhall|smithy>
-      aliases: [ jobshop ]
+    description: Open the job ingredient shops.
+    usage: /pvshop <messhall|smithy>
+    aliases: [ jobshop ]
   pvhelp:
-      description: List all plugin commands.
-      usage: /pvhelp [page]
+    description: List all plugin commands.
+    usage: /pvhelp [page]
+  staff:
+    description: Open the Staff Management GUI
+    usage: /staff
+    permission: prisonvaults.staff.manage
+  staffmail:
+    description: Check staff notifications
+    usage: /staffmail <read|clear>
+    permission: prisonvaults.staff
+  setstaff:
+    description: Set a player's staff rank directly
+    usage: /setstaff <player> <rank>
+    permission: prisonvaults.admin
+
 permissions:
   prisonvaults.use:
     default: true
   prisonvaults.admin:
-    description: Allows use of admin commands like /addmoney
+    description: Allows use of admin commands like /addmoney and /setstaff
     default: op
   prisonvaults.addmoney:
     description: Allows giving money to players
@@ -177,9 +187,9 @@ permissions:
   prisonvaults.pvhelp:
     description: Allows listing all plugin commands
     default: true
-
-
-
-
-
-
+  prisonvaults.staff:
+    description: Base permission for staff members (mail, chat prefix)
+    default: op
+  prisonvaults.staff.manage:
+    description: Allows opening the Staff Management GUI
+    default: op

@@ -2,6 +2,7 @@ package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.gangs.Gang;
+import me.theprisonbandit.prisonVaults.managers.RankManager; // Import RankManager
 import me.theprisonbandit.prisonVaults.utils.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -91,10 +92,10 @@ public class ProfileCommand implements CommandExecutor {
         // --- GATHER DATA ---
 
         // 1. Job Data
-        // Ensure your JobManager accepts OfflinePlayer. If not, you might need to check if online first.
         String job = plugin.jobManager.getJob(target);
         String jobRank = "N/A";
         if (!job.equals("None")) {
+            // Using your existing logic for job rank name
             jobRank = plugin.jobManager.getJobRank(target).name();
         }
 
@@ -102,6 +103,7 @@ public class ProfileCommand implements CommandExecutor {
         Gang gang = plugin.gangManager.getPlayerGang(target.getUniqueId());
         String gangDisplay = ChatColor.GRAY + "None";
         String gangTag = "";
+        String gangDesc = "";
 
         if (gang != null) {
             String color = gang.getColor();
@@ -112,14 +114,21 @@ public class ProfileCommand implements CommandExecutor {
 
             // Format: [TAG]
             gangTag = ChatColor.translateAlternateColorCodes('&', "&8[" + color + gang.getTag() + "&8]");
+
+            // Get Description
+            gangDesc = gang.getDescription();
         }
 
         // 3. Other Data
         String rank = plugin.getPlayerRank(target);
+
+        // NEW: Get Staff Rank
+        RankManager.Rank staffRank = plugin.rankManager.getRank(target);
+
         double bal = plugin.getBalance(target);
         String bioRaw = plugin.jobManager.getBio(target);
 
-        // 4. Statistics (NEW CODE INTEGRATION)
+        // 4. Statistics
         String statusStr = target.isOnline() ? ChatColor.GREEN + "Online" : ChatColor.RED + "Offline";
         String healthStr = ChatColor.RED + "N/A (Offline)";
         String kdStr = ChatColor.GRAY + "N/A";
@@ -146,6 +155,12 @@ public class ProfileCommand implements CommandExecutor {
         // --- BUILD LORE ---
         List<String> lore = new ArrayList<>();
         lore.add(ChatColor.GRAY + "Status: " + statusStr);
+
+        // NEW: Staff Rank Display (If applicable)
+        if (staffRank != RankManager.Rank.MEMBER) {
+            lore.add(ChatColor.GRAY + "Staff: " + staffRank.color + staffRank.display);
+        }
+
         lore.add(ChatColor.GRAY + "Rank: " + ChatColor.YELLOW + rank);
         lore.add(ChatColor.GRAY + "Balance: " + ChatColor.GREEN + "$" + NumberUtils.format(bal));
         lore.add(""); // Spacer
@@ -154,6 +169,10 @@ public class ProfileCommand implements CommandExecutor {
         lore.add(ChatColor.GRAY + "Gang: " + gangDisplay);
         if (gang != null) {
             lore.add(ChatColor.GRAY + "Tag: " + gangTag);
+            // NEW: Gang Description Display
+            if (gangDesc != null && !gangDesc.isEmpty()) {
+                lore.add(ChatColor.GRAY + "Desc: " + ChatColor.ITALIC + gangDesc);
+            }
         }
 
         lore.add(""); // Spacer
@@ -163,7 +182,7 @@ public class ProfileCommand implements CommandExecutor {
         lore.add(ChatColor.GRAY + "Position: " + ChatColor.AQUA + jobRank);
         lore.add(""); // Spacer
 
-        // Stats Section (Newly Added)
+        // Stats Section
         lore.add(ChatColor.GRAY + "Health: " + healthStr);
         lore.add(ChatColor.GRAY + "K/D Ratio: " + kdStr);
         lore.add(ChatColor.GRAY + "Playtime: " + playtimeStr);

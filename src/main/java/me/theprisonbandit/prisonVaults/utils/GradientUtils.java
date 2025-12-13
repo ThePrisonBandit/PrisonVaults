@@ -5,21 +5,26 @@ import java.awt.Color;
 
 public class GradientUtils {
 
-    // --- STATIC GRADIENT (Kept for compatibility) ---
+    // --- STATIC GRADIENT ---
     public static String getGradient(String text, String preset) {
         if (preset == null) return text;
 
-        // If we have a color definition for it, use the static generator helper
         Color[] colors = getColors(preset);
         if (colors != null) {
-            // Special handling for Rainbow (Multi-color) vs standard 2-color gradients
+            // Special handling for Rainbow
             if (preset.equalsIgnoreCase("RAINBOW")) {
                 return rainbow(text);
             }
-            // For standard 2-color gradients, use the first and last color
-            return rgbGradient(text, toHex(colors[0]), toHex(colors[1]));
-        }
+            // For BlueCrew or any multi-color preset, use the first and last colors for static gradient
+            // Or interpolate across all if you prefer, but standard 2-point is usually sufficient for static
+            // Using first and last ensures BlueCrew (Blue -> Sky -> Blue) looks just Blue, so let's use Index 0 and 1
+            if (preset.equalsIgnoreCase("BLUECREW")) {
+                return rgbGradient(text, toHex(colors[0]), toHex(colors[1]));
+            }
 
+            // Standard 2-color logic
+            return rgbGradient(text, toHex(colors[0]), toHex(colors[colors.length - 1]));
+        }
         return text;
     }
 
@@ -31,12 +36,13 @@ public class GradientUtils {
         StringBuilder builder = new StringBuilder();
         double stepSize = 1.0 / (text.length());
 
-        // Cycle the offset from 0.0 to 1.0 over 50 ticks
+        // Cycle the offset from 0.0 to 1.0 over 50 ticks (adjust speed here)
         double offset = (step % 50) / 50.0;
 
         for (int i = 0; i < text.length(); i++) {
             double ratio = (i * stepSize) + offset;
-            if (ratio > 1.0) ratio -= 1.0;
+            // Wrap ratio to stay within 0.0 - 1.0 bounds for cycling
+            while (ratio > 1.0) ratio -= 1.0;
 
             Color color = interpolate(colors, ratio);
             builder.append(ChatColor.of(color)).append(text.charAt(i));
@@ -44,10 +50,17 @@ public class GradientUtils {
         return builder.toString();
     }
 
-    // --- COLOR DEFINITIONS (UPDATED WITH ALL PRESETS) ---
+    // --- COLOR DEFINITIONS (UPDATED) ---
     private static Color[] getColors(String preset) {
         if (preset == null) return null;
         switch (preset.toUpperCase()) {
+            // NEW: BlueCrew (RGB: 0,0,255 with shades of Light Blue)
+            case "BLUECREW": return new Color[]{
+                    new Color(0, 0, 255),    // Pure Blue
+                    new Color(135, 206, 250), // Light Sky Blue
+                    new Color(0, 0, 255)     // Back to Pure Blue (for smooth looping)
+            };
+
             // Special
             case "RAINBOW": return new Color[]{
                     Color.RED, Color.ORANGE, Color.YELLOW, Color.GREEN,

@@ -19,9 +19,6 @@ public class ScoreboardManager {
     }
 
     public void setScoreboardVisible(Player player, boolean visible) {
-        // ... (Same toggle logic as before) ...
-        // For brevity, assuming you kept the toggle logic I sent in the previous turn
-        // If you need it again, let me know!
         FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
         data.set("scoreboard-enabled", visible);
         try { data.save(plugin.getPlayerDataFile(player.getUniqueId())); } catch (Exception e) {}
@@ -60,25 +57,34 @@ public class ScoreboardManager {
             coloredName = ChatColor.WHITE + player.getName();
         }
 
+        // Staff Rank Data
+        RankManager.Rank staffRank = plugin.rankManager.getRank(player);
+
         // Gang Info
         Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
         String gangDisplay = ChatColor.GRAY + "No Gang";
+        String gangDesc = "";
+
         if (gang != null) {
             String colorCode = gang.getColor();
             if (colorCode == null || colorCode.isEmpty()) colorCode = "&f";
             String rawString = colorCode + gang.getName() + " &8[" + colorCode + gang.getTag() + "&8]";
             gangDisplay = ChatColor.translateAlternateColorCodes('&', rawString);
+
+            // Truncate description if too long for scoreboard
+            gangDesc = gang.getDescription();
+            if (gangDesc.length() > 16) {
+                gangDesc = gangDesc.substring(0, 16) + "..";
+            }
         }
 
         // Job Info
         String currentJob = plugin.jobManager.getJob(player);
         String jobTitle = "Unemployed";
-
         int jobLevel = 0;
         double jobXp = 0;
 
         if (!currentJob.equals("None")) {
-            // --- FIX 1: Fetch the correct Promotion Title ---
             jobLevel = plugin.jobManager.getLevel(player);
             jobXp = plugin.jobManager.getXp(player);
             jobTitle = plugin.jobManager.getPromotionTitle(currentJob, jobLevel);
@@ -92,15 +98,18 @@ public class ScoreboardManager {
 
         // PLAYER SECTION
         createDynamicLine(board, obj, "playerName", "&f \uD83D\uDC64 ", coloredName, score--);
+
+        // Add Staff Rank Line if they are Staff
+        if (staffRank != RankManager.Rank.MEMBER) {
+            createLine(board, obj, "   &7Staff: " + staffRank.color + staffRank.display, score--);
+        }
         createLine(board, obj, "   &7Rank: &f" + plugin.getPlayerRank(player), score--);
 
         // JOB SECTION
         if (!currentJob.equals("None")) {
-            // FIX 2: Condensed Lines (Removed empty spacers to fit stats)
             createLine(board, obj, "&b&l JOB INFO", score--);
-            createLine(board, obj, "   &7Job: &f" + currentJob, score--);
             createLine(board, obj, "   &7Title: &f" + jobTitle, score--);
-            // Combined Level and XP into one line
+            // Combined Level and XP
             createLine(board, obj, "   &7Lvl: &f" + jobLevel + " &7(" + (int)jobXp + "/100)", score--);
 
             String day = plugin.jobScheduleManager.getCurrentDayName();
@@ -116,20 +125,29 @@ public class ScoreboardManager {
         createLine(board, obj, "&d&l GANG", score--);
         createDynamicLine(board, obj, "gangEntry", "   ", gangDisplay, score--);
 
-        // STATS SECTION
+        // Show Description if in a gang
+        if (gang != null && !gangDesc.isEmpty()) {
+            createLine(board, obj, "   &7Desc: &f" + gangDesc, score--);
+        }
+
+        // STATS SECTION (Combined to save space)
         createLine(board, obj, "&a&l STATISTICS", score--);
         double bal = plugin.getBalance(player);
-        createLine(board, obj, "   &7Balance: &2$&a" + NumberUtils.format(bal), score--);
-        createLine(board, obj, "   &7Vaults: &f" + plugin.getMaxVaults(player), score--);
+        // Format: Balance | Vaults
+        createLine(board, obj, "   &2$&a" + NumberUtils.format(bal) + " &7| &fVaults: " + plugin.getMaxVaults(player), score--);
 
-        // Bottom Separator
-        createLine(board, obj, "&8&m---------------------", score);
+        // Bottom Separator (Only add if we have space, score > 0)
+        if (score > 0) {
+            createLine(board, obj, "&8&m---------------------", score);
+        }
 
         player.setScoreboard(board);
     }
 
     private void createLine(Scoreboard board, Objective obj, String text, int scoreNum) {
+        if (scoreNum < 1) return; // Prevent crash if over 15 lines
         String colored = ChatColor.translateAlternateColorCodes('&', text);
+        // Ensure uniqueness
         while (board.getEntries().contains(colored)) {
             colored += ChatColor.RESET;
         }
@@ -138,6 +156,7 @@ public class ScoreboardManager {
     }
 
     private void createDynamicLine(Scoreboard board, Objective obj, String teamName, String prefix, String suffix, int scoreNum) {
+        if (scoreNum < 1) return;
         Team team = board.registerNewTeam(teamName);
         String entry = ChatColor.values()[Math.abs(scoreNum) % 15].toString() + ChatColor.RESET;
         team.addEntry(entry);

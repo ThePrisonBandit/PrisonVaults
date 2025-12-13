@@ -18,7 +18,7 @@ public class Gang {
         this.name = name;
         this.tag = tag;
         this.owner = owner;
-        this.description = "Default gang description.";
+        this.description = "None.";
         this.color = "&f"; // Default white
         this.members.put(owner, Rank.LEADER);
     }

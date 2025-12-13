@@ -84,9 +84,14 @@ public class HelpCommand implements CommandExecutor {
 
         // --- ADMIN / MISC ---
         addCmd("/prisonvaults reload", "Reload the plugin configuration");
-        addCmd("/pvconfig set <rob|pickpocket> <decimal>, example: 0.5 sets it to 50% success chance.", "Open the prisonvaults config file and edit it");
+        addCmd("/pvconfig set <rob|pickpocket> <decimal>", "Open the prisonvaults config file and edit it");
         addCmd("/pvscoreboard <show|hide>", "Toggle the prisonvaults scoreboard");
         addCmd("/pvhelp [page]", "List all plugin commands");
+
+        // --- STAFF ---
+        addCmd("/staff", "Open the Staff Management GUI");
+        addCmd("/setstaff <player> <rank>", "Set a player's staff rank (OP Only)");
+        addCmd("/staffmail <read|clear>", "Check staff notifications/mail");
     }
 
     private void addCmd(String syntax, String desc) {

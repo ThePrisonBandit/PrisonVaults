@@ -1,10 +1,14 @@
 package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.gangs.Gang;
 import me.theprisonbandit.prisonVaults.gangs.Mail;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -31,38 +35,67 @@ public class MailCommands implements CommandExecutor {
         if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
 
-        // /inbox
+        // --- /inbox (Old Code) ---
         if (label.equalsIgnoreCase("inbox")) {
             openInbox(player);
             return true;
         }
 
-        // /mail
+        // --- /mail (Merged) ---
         if (label.equalsIgnoreCase("mail")) {
             if (args.length < 2) {
-                player.sendMessage(ChatColor.RED + "Usage: /mail <player|gang> <message>");
+                player.sendMessage(ChatColor.RED + "Usage: /mail <player|gang|staff> <message>");
                 return true;
             }
 
-            String target = args[0];
+            String targetName = args[0];
             String msg = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-            if (target.equalsIgnoreCase("gang")) {
+            // 1. MAIL STAFF (New)
+            if (targetName.equalsIgnoreCase("staff")) {
+                plugin.staffMailManager.sendToAllStaff(player.getName(), msg);
+                player.sendMessage(ChatColor.GREEN + "Message sent to the Staff Team.");
+                SoundUtils.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1f);
+                return true;
+            }
+
+            // 2. MAIL OWN GANG (Old Code - literal "gang")
+            if (targetName.equalsIgnoreCase("gang")) {
                 plugin.mailManager.sendGangMail(player, msg);
-            } else {
-                Player t = Bukkit.getPlayer(target);
-                if (t == null) {
-                    player.sendMessage(ChatColor.RED + "Player not found.");
-                    return true;
-                }
+                // Old method sends the confirmation message inside itself usually
+                return true;
+            }
+
+            // 3. MAIL SPECIFIC GANG (New)
+            if (plugin.gangManager.gangExists(targetName)) {
+                Gang g = plugin.gangManager.getGang(targetName);
+                plugin.mailManager.sendMailToGang(g, player.getName(), msg);
+                player.sendMessage(ChatColor.GREEN + "Mail sent to Gang " + g.getName());
+                return true;
+            }
+
+            // 4. MAIL PLAYER (Merged Online + Offline)
+            Player t = Bukkit.getPlayer(targetName);
+            if (t != null) {
+                // Online Player (Old Code)
                 plugin.mailManager.sendMail(player.getName(), t.getUniqueId(), msg);
-                player.sendMessage(ChatColor.GREEN + "Mail sent!");
+                player.sendMessage(ChatColor.GREEN + "Mail sent to " + t.getName());
+            } else {
+                // Offline Player (New)
+                OfflinePlayer off = Bukkit.getOfflinePlayer(targetName);
+                if (off.hasPlayedBefore()) {
+                    plugin.mailManager.sendMail(player.getName(), off.getUniqueId(), msg);
+                    player.sendMessage(ChatColor.GREEN + "Mail sent to " + off.getName() + " (Offline)");
+                } else {
+                    player.sendMessage(ChatColor.RED + "Player not found.");
+                }
             }
             return true;
         }
         return true;
     }
 
+    // --- OLD CODE HELPERS ---
     private void openInbox(Player player) {
         Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + "Inbox");
         List<Mail> mails = plugin.mailManager.getInbox(player.getUniqueId());

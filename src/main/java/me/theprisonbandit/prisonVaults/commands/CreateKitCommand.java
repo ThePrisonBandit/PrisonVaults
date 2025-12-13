@@ -22,7 +22,7 @@ public class CreateKitCommand implements CommandExecutor {
         }
 
         if (args.length < 6) {
-            sender.sendMessage(ChatColor.RED + "Usage: /createkit <Name> <Color> <Tool:WOOD/IRON...> <Armor:LEATHER/IRON...> <EnchantLvl> <Price>");
+            sender.sendMessage(ChatColor.RED + "Usage: /createkit <Name> <Color> <Material:WOOD/IRON/DIAMOND> <Armor:LEATHER/IRON/DIAMOND> <EnchantLvl> <Price>");
             return true;
         }
 
@@ -41,8 +41,9 @@ public class CreateKitCommand implements CommandExecutor {
             return true;
         }
 
+        // Uses the updated procedural logic including Shivs/Cleavers/Abilities
         plugin.kitManager.createProceduralKit(name, color, tool, armor, enchant, price);
-        sender.sendMessage(ChatColor.GREEN + "Created kit " + name + " successfully!");
+        sender.sendMessage(ChatColor.GREEN + "Created procedural kit " + name + " (Includes Shiv, Cleaver, Armor & Abilities) successfully!");
 
         return true;
     }

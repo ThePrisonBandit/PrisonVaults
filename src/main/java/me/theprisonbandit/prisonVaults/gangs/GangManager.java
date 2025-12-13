@@ -28,24 +28,27 @@ public class GangManager {
         loadGangs();
     }
 
-    // --- NEW: KICK LOGIC ---
+    // --- METHODS FOR MAIL COMMANDS ---
+    public boolean gangExists(String name) {
+        return getGangByName(name) != null;
+    }
+
+    public Gang getGang(String name) {
+        return getGangByName(name);
+    }
+    // -------------------------------
+
     public void kickMember(Gang gang, UUID memberId) {
-        // 1. Remove from data structures
         gang.getMembers().remove(memberId);
         playerGangCache.remove(memberId);
-
-        // 2. Save
         saveGangs();
-
-        // 3. Update the kicked player's scoreboard immediately
         Player target = Bukkit.getPlayer(memberId);
         if (target != null && target.isOnline()) {
             target.sendMessage(ChatColor.RED + "You have been kicked from the gang.");
-            plugin.scoreboardManager.setScoreboard(target); // This resets "Gang: None"
+            plugin.scoreboardManager.setScoreboard(target);
         }
     }
 
-    // --- Invite/Join Logic ---
     public void invitePlayer(Gang gang, Player target) {
         pendingInvites.computeIfAbsent(target.getUniqueId(), k -> new HashSet<>()).add(gang.getName());
         target.sendMessage(ChatColor.DARK_GRAY + "--------------------------------");
@@ -75,7 +78,6 @@ public class GangManager {
         player.sendMessage(ChatColor.GREEN + "Joined " + gang.getName() + "!");
     }
 
-    // --- Core Methods ---
     public Gang createGang(Player owner, String tag, String name) {
         if (getPlayerGang(owner.getUniqueId()) != null) { owner.sendMessage(ChatColor.RED + "Already in gang."); return null; }
         if (gangNameExists(name) || gangTagExists(tag)) { owner.sendMessage(ChatColor.RED + "Name/Tag taken."); return null; }
@@ -109,7 +111,6 @@ public class GangManager {
     public boolean gangTagExists(String tag) { return getGangByTag(tag) != null; }
     public Collection<Gang> getAllGangs() { return gangsById.values(); }
 
-    // --- File I/O ---
     public void saveGangs() {
         for (Gang gang : gangsById.values()) {
             String path = "gangs." + gang.getId();

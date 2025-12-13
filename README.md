@@ -1,12 +1,39 @@
-# PrisonVaults
 🔒 PrisonVaults - The Ultimate Prison Core Solution
-Vaults • Gangs • Economy • Jobs • Pickpocketing • Kits • Ranks • Scoreboard
+Vaults • Gangs • Economy • Jobs • Staff Management • Combat Kits • Scoreboard
 
-PrisonVaults is not just a storage plugin; it is a complete ecosystem designed to power modern Prison servers. Built for Minecraft 1.21+, it combines massive player storage, a fully integrated Gangs system, a robust economy capable of handling decillions, and a stunning visual experience with Hex colors and Gradients.
+PrisonVaults is the complete ecosystem designed to power modern Prison servers. Built for Minecraft 1.21+, it combines massive player storage, a fully integrated Gangs system, a robust economy capable of handling decillions, and now includes a full Staff Management Suite and Combat-Ready Kits.
 
-Stop cluttering your server with 15 different plugins. Get the all-in-one solution that just works.
+Stop cluttering your server with 20 different plugins. Get the all-in-one solution that just works.
 
 🔥 Key Features
+🛡️ Staff Management & Security (NEW!)
+Manage your team directly from within the game without needing external permission plugins for basic ranking.
+
+GUI Management: Operators can use /staff to open a sleek GUI to Promote, Demote, Kick, Ban, or Warn staff and members.
+
+Rank Safety: Built-in protections ensure that Owners and Co-Owners cannot be kicked, banned, or warned by lower-ranking staff via the GUI.
+
+Global Staff Mail: Use /mail staff <msg> to alert the entire team. Online staff get an immediate sound notification; offline staff are alerted the moment they join.
+
+Staff Ranks: Displays distinct staff prefixes (e.g., [Owner], [Admin]) in chat and on the scoreboard, separate from prison ranks.
+
+⚔️ Advanced Kits & Abilities (NEW!)
+Kits are no longer just items; they are gameplay changers.
+
+Combat Abilities: Procedurally generated kits now include:
+
+Shivs: Deal 4 hearts of damage + Bleed damage over time.
+
+Cleavers: Always deal Critical Hits.
+
+Digging Shovels: Mine a 3x3 area instantly.
+
+MedKits & SwiftFeet: Right-click consumables for instant healing or speed bursts.
+
+Auto-Equip: Armor from bought kits is automatically equipped if your slots are empty.
+
+Procedural Generation: Admins can generate balanced kits with one command (/createkit).
+
 📦 Infinite Storage Vaults
 Give your players the storage they deserve.
 
@@ -16,9 +43,9 @@ Massive Capacity: Support for up to 100+ Vaults per player.
 
 Instant Saving: NBT-safe storage ensures items never go missing.
 
-Easy Access: Accessed via a simple /pv <number> command or a GUI menu.
+Easy Access: Accessed via /pv <number> or a GUI menu.
 
-💼 Jobs & Progression System (NEW!)
+💼 Jobs & Progression System
 Give your players a way to earn their keep.
 
 Interactive Jobs: Players can join jobs (like Cooking) via /job join.
@@ -29,56 +56,39 @@ Career Ladder: Earn promotions from Cook -> Chef -> Head Chef.
 
 Multipliers: Promotions automatically double your income per quest!
 
-🕵️ Criminal Activities (NEW!)
+🕵️ Criminal Activities
 Add risk and excitement to your prison block.
 
 Pickpocketing: Sneak up on players (Shift+Right Click) to quietly pry open their vaults. Left-click an item to attempt a steal (0.01% chance)!
 
 Robbery: Use /rob <player> to attempt a cash heist.
 
-Balanced Risk: Both actions have strict cooldowns (2 hours) and low success rates to prevent abuse while keeping the adrenaline high.
+Balanced Risk: Strict cooldowns and low success rates keep the adrenaline high without ruining the economy.
 
 ⚔️ Advanced Gang System
 Community is everything. Let your players build their empires.
 
-GUI Management: No more complex commands. Manage everything from a sleek Gang Manager GUI.
+GUI Management: Manage everything from a sleek Gang Manager GUI.
 
-Role Management: Promote/Demote members (Member -> Thug -> Elite -> Co-Leader) with simple clicks.
+Role Management: Promote/Demote members (Member -> Thug -> Elite -> Co-Leader).
 
-Gang Customization: Leaders can set Gang Colors, Descriptions, and Tags that appear in chat and on the scoreboard.
+Customization: Leaders can set Colors, Tags, and Descriptions that appear on the scoreboard and in profiles.
 
-Safety Checks: Only the owner can disband the gang (via a secure GUI button).
-
-Chat Integration: Gang Tags appear in chat automatically: [GangTag] [Rank] Player: message.
+Chat Integration: Gang Tags appear in chat automatically: [Staff] [GangTag] [Rank] Player: message.
 
 💰 Decillion-Ready Economy
-Prison servers deal with big numbers. PrisonVaults is ready.
+Massive Math: Supports balances up to 999 Decillion.
 
-Massive Math: Supports balances up to 999 Decillion. No more integer overflow errors.
-
-Sell Wand / Command Support: Built-in /sell command.
-
-Formatting: Beautifully formatted numbers (e.g., $1.5M, $10B, $5T) on the scoreboard.
+Formatting: Beautifully formatted numbers (e.g., $1.5M, $10B, $5T).
 
 📊 Dynamic Scoreboard & Profiles
 Keep your players informed with a beautiful, flicker-free sidebar.
 
-Live Updates: Scoreboard refreshes instantly when you join a gang, change jobs, or rank up.
+Live Updates: Scoreboard refreshes instantly for Gang changes, Rankups, or Job promotions.
 
-Player Profiles: View detailed stats for yourself or others using /myprofile or /whois <player>.
+Detailed Profiles: View stats via /myprofile or /whois <player>. Now includes Gang Descriptions and Staff Ranks.
 
-Custom Bios: Players can set their own biography using /setbio.
-
-Hex/Gradient Support: Player names shine with RGB Gradients based on their preferences.
-
-Stats Tracked: Shows Rank, Gang, Job Title, Balance, and Vaults Unlocked.
-
-🎒 Kits & Mail System
-GUI Kit Selector: Players can preview and claim kits from a menu.
-
-Player Inbox: Send items to offline players! Great for rewards or trading.
-
-Kit Editor: Admins can create kits in-game using /createkit.
+Hex/Gradient Support: Player names shine with RGB Gradients (like the animated BlueCrew preset).
 
 🛠️ Commands & Permissions
 Player Commands
@@ -90,61 +100,62 @@ Player Commands
 
 /pay <player> <amount> - Send money to others.
 
-/sell - Sell the items in your hand (configurable prices).
+/mail <player|gang|staff> <msg> - Send mail to a player, a gang, or the entire staff team.
 
-/mail or /inbox - Open your item mailbox.
+/inbox - Check your personal mail.
 
-/colorify - Change your name color/gradient style.
+/colorify <preset> - Change your name color/gradient style.
 
-/rob <player> - Attempt to rob a player's balance (0.01% chance).
-
-Shift+Right Click Player - Attempt to pickpocket a player's vault.
+/rob <player> - Attempt to rob a player.
 
 Job & Profile Commands
-/job join <job> - Join a job (e.g., /job join Cooking).
+/job join <job> - Join a job.
 
 /job quit - Quit your current job.
 
 /myprofile - View your personal stats card.
 
-/whois <player> - View another player's profile.
+/whois <player> - View another player's profile (supports offline players).
 
 /setbio <text> - Set your public profile biography.
 
 Gang Commands
 /gang create <name> <tag> - Start a new gang.
 
-/gang invite <player> - Invite a user to your gang.
+/gang invite <player> - Invite a user.
 
 /gang join <gang> - Accept an invite.
 
-/gang manager - Open the Gang GUI to manage members, colors, and settings.
+/gang manager - Open the GUI to manage members, colors, description, and settings.
 
-/gangs - List all active gangs on the server.
+/gangs - List all active gangs.
 
-Admin Commands
-/addmoney <player> <amount> - Inject money into the economy.
+Staff & Admin Commands (NEW!)
+/staff - (OP) Open the Staff Management GUI (Promote/Demote/Ban/Kick/Warn).
 
-/createkit <name> <color> <tool> <armor> <enchant> <price> - Create a custom kit.
+/setstaff <player> <rank> - (OP) Directly set a player's staff rank.
 
-/prisonvaults reload - Reload all configuration files.
+/staffmail read - (Staff) Read global staff announcements.
 
-🎨 Visual Showcase
-Gradient Names: Full support for hex codes means your VIPs look amazing.
+/staffmail clear - (Admin) Clear the global staff inbox.
 
-Formatted Chat: [Gang] [Rank] Name: Message format built-in.
+/createkit <name> <color> <tool> <armor> <enchant> <price> - (Admin) Create a procedural kit with abilities.
 
-Clean GUIs: Every menu, from the Gang Manager to the Profile Viewer, is designed for ease of use.
+/addmoney <player> <amount> - (Admin) Inject money.
+
+/prisonvaults reload - (Admin) Reload all configs.
 
 ⚙️ Configuration
 PrisonVaults is highly configurable!
 
-prices.yml: Set the sell price for every item block.
+staff-mail.yml: Stores global staff messages safely.
+
+kits.yml: Full control over kit contents, abilities, and cooldowns.
+
+gangs.yml: Keeps track of all gangs, members, and descriptions.
 
 ranks.yml: Define your rank ladder and costs.
 
-kits.yml: Full control over kit contents and cooldowns.
-
-gangs.yml: (Data storage) Keeps track of all gangs and members safely.
+prices.yml: Set the sell price for every item block.
 
 Ready to revolutionize your Prison Server? Download PrisonVaults today!

@@ -1,7 +1,7 @@
 package me.theprisonbandit.prisonVaults.gangs;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
-import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
@@ -14,33 +14,39 @@ import java.io.IOException;
 import java.util.*;
 
 public class MailManager {
+
     private final PrisonVaults plugin;
 
     public MailManager(PrisonVaults plugin) {
         this.plugin = plugin;
     }
 
-    public void sendMail(String senderName, UUID targetUUID, String message) {
-        File file = plugin.getPlayerDataFile(targetUUID);
-        FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-
-        List<String> mails = data.getStringList("inbox");
-        String mailEntry = System.currentTimeMillis() + "|" + senderName + "|" + message;
-        mails.add(0, mailEntry);
-
-        data.set("inbox", mails);
-        try { data.save(file); } catch (IOException e) { e.printStackTrace(); }
-
-        Player target = Bukkit.getPlayer(targetUUID);
-        if (target != null) {
-            target.sendMessage(ChatColor.GOLD + "You have new mail! Type /inbox to read.");
-            // NEW: Play sound
-            SoundUtils.playSound(target, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 2.0f);
+    // --- NEW METHOD FOR MAIL COMMANDS ---
+    public void sendMailToGang(Gang gang, String senderName, String message) {
+        for (UUID memberId : gang.getMembers().keySet()) {
+            sendMail(senderName, memberId, "[Gang Mail] " + message);
         }
     }
+    // -------------------------------------
 
-    // ... (Keep existing sendGangMail, getInbox, clearInbox methods) ...
-    // Note: You don't need to change other methods here unless you want sounds there too.
+    public void sendMail(String sender, UUID receiverId, String message) {
+        File f = plugin.getPlayerDataFile(receiverId);
+        FileConfiguration data = YamlConfiguration.loadConfiguration(f);
+
+        List<String> inbox = data.getStringList("mail");
+        // Format: Sender;Timestamp;Message
+        String entry = sender + ";" + System.currentTimeMillis() + ";" + message;
+        inbox.add(entry);
+
+        data.set("mail", inbox);
+        try { data.save(f); } catch (IOException e) { e.printStackTrace(); }
+
+        Player target = Bukkit.getPlayer(receiverId);
+        if (target != null && target.isOnline()) {
+            target.sendMessage(ChatColor.GOLD + "You have new mail! Type /inbox to read.");
+            SoundUtils.playSound(target, Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 1.5f);
+        }
+    }
 
     public void sendGangMail(Player sender, String message) {
         Gang gang = plugin.gangManager.getPlayerGang(sender.getUniqueId());
@@ -48,32 +54,37 @@ public class MailManager {
             sender.sendMessage(ChatColor.RED + "You are not in a gang.");
             return;
         }
-
-        for (UUID memberId : gang.getMembers().keySet()) {
-            sendMail(sender.getName() + " (Gang)", memberId, message);
-        }
-        sender.sendMessage(ChatColor.GREEN + "Gang mail sent!");
+        sendMailToGang(gang, sender.getName(), message);
+        sender.sendMessage(ChatColor.GREEN + "Mail sent to your gang.");
     }
 
-    public List<Mail> getInbox(UUID uuid) {
-        File file = plugin.getPlayerDataFile(uuid);
-        FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-        List<String> raw = data.getStringList("inbox");
-        List<Mail> inbox = new ArrayList<>();
+    public List<Mail> getInbox(UUID playerId) {
+        File f = plugin.getPlayerDataFile(playerId);
+        FileConfiguration data = YamlConfiguration.loadConfiguration(f);
+        List<String> raw = data.getStringList("mail");
+        List<Mail> mails = new ArrayList<>();
 
-        for (String entry : raw) {
-            String[] parts = entry.split("\\|", 3);
+        for (String s : raw) {
+            String[] parts = s.split(";", 3);
             if (parts.length == 3) {
-                inbox.add(new Mail(parts[1], parts[2], Long.parseLong(parts[0])));
+                // FIXED: Convert timestamp (parts[1]) to long
+                try {
+                    long timestamp = Long.parseLong(parts[1]);
+                    mails.add(new Mail(parts[0], timestamp, parts[2]));
+                } catch (NumberFormatException e) {
+                    // Fallback if data is corrupted
+                    mails.add(new Mail(parts[0], System.currentTimeMillis(), parts[2]));
+                }
             }
         }
-        return inbox;
+        Collections.reverse(mails);
+        return mails;
     }
 
-    public void clearInbox(UUID uuid) {
-        File file = plugin.getPlayerDataFile(uuid);
-        FileConfiguration data = YamlConfiguration.loadConfiguration(file);
-        data.set("inbox", null);
-        try { data.save(file); } catch (IOException e) { e.printStackTrace(); }
+    public void clearInbox(UUID playerId) {
+        File f = plugin.getPlayerDataFile(playerId);
+        FileConfiguration data = YamlConfiguration.loadConfiguration(f);
+        data.set("mail", null);
+        try { data.save(f); } catch (IOException e) {}
     }
 }
