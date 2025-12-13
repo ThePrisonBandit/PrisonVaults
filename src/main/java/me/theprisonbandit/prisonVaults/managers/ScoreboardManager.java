@@ -18,7 +18,30 @@ public class ScoreboardManager {
         this.plugin = plugin;
     }
 
+    public void setScoreboardVisible(Player player, boolean visible) {
+        // ... (Same toggle logic as before) ...
+        // For brevity, assuming you kept the toggle logic I sent in the previous turn
+        // If you need it again, let me know!
+        FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
+        data.set("scoreboard-enabled", visible);
+        try { data.save(plugin.getPlayerDataFile(player.getUniqueId())); } catch (Exception e) {}
+        if (visible) updateScoreboard(player);
+        else removeScoreboard(player);
+    }
+
+    public boolean isScoreboardVisible(Player player) {
+        return plugin.getPlayerData(player.getUniqueId()).getBoolean("scoreboard-enabled", true);
+    }
+
+    public void removeScoreboard(Player player) {
+        player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+    }
+
+    // --- CORE LOGIC ---
+
     public void setScoreboard(Player player) {
+        if (!isScoreboardVisible(player)) return;
+
         org.bukkit.scoreboard.ScoreboardManager manager = Bukkit.getScoreboardManager();
         Scoreboard board = manager.getNewScoreboard();
 
@@ -50,42 +73,48 @@ public class ScoreboardManager {
         // Job Info
         String currentJob = plugin.jobManager.getJob(player);
         String jobTitle = "Unemployed";
+
+        int jobLevel = 0;
+        double jobXp = 0;
+
         if (!currentJob.equals("None")) {
-            jobTitle = plugin.jobManager.getJobRank(player).name();
+            // --- FIX 1: Fetch the correct Promotion Title ---
+            jobLevel = plugin.jobManager.getLevel(player);
+            jobXp = plugin.jobManager.getXp(player);
+            jobTitle = plugin.jobManager.getPromotionTitle(currentJob, jobLevel);
         }
 
-        // --- 2. BUILD LINES ---
+        // --- 2. BUILD LINES (Max 15) ---
         int score = 15;
 
         // Top Separator
         createLine(board, obj, "&8&m---------------------", score--);
 
-        // PLAYER SECTION (Dynamic Team Line)
+        // PLAYER SECTION
         createDynamicLine(board, obj, "playerName", "&f \uD83D\uDC64 ", coloredName, score--);
         createLine(board, obj, "   &7Rank: &f" + plugin.getPlayerRank(player), score--);
 
-        // Spacer
-        createLine(board, obj, ChatColor.RED + "", score--);
-
         // JOB SECTION
         if (!currentJob.equals("None")) {
+            // FIX 2: Condensed Lines (Removed empty spacers to fit stats)
             createLine(board, obj, "&b&l JOB INFO", score--);
             createLine(board, obj, "   &7Job: &f" + currentJob, score--);
             createLine(board, obj, "   &7Title: &f" + jobTitle, score--);
+            // Combined Level and XP into one line
+            createLine(board, obj, "   &7Lvl: &f" + jobLevel + " &7(" + (int)jobXp + "/100)", score--);
+
+            String day = plugin.jobScheduleManager.getCurrentDayName();
+            String status = plugin.jobScheduleManager.isWorkDay() ? "&a(Open)" : "&c(Closed)";
+            createLine(board, obj, "   &7Day: &e" + day + " " + status, score--);
+
         } else {
             createLine(board, obj, "&b&l JOB INFO", score--);
             createLine(board, obj, "   &7Status: &8Unemployed", score--);
         }
 
-        // Spacer
-        createLine(board, obj, ChatColor.GREEN + "", score--);
-
         // GANG SECTION
         createLine(board, obj, "&d&l GANG", score--);
         createDynamicLine(board, obj, "gangEntry", "   ", gangDisplay, score--);
-
-        // Spacer
-        createLine(board, obj, ChatColor.BLUE + "", score--);
 
         // STATS SECTION
         createLine(board, obj, "&a&l STATISTICS", score--);
@@ -99,9 +128,6 @@ public class ScoreboardManager {
         player.setScoreboard(board);
     }
 
-    /**
-     * Helper to create a standard text line.
-     */
     private void createLine(Scoreboard board, Objective obj, String text, int scoreNum) {
         String colored = ChatColor.translateAlternateColorCodes('&', text);
         while (board.getEntries().contains(colored)) {
@@ -111,22 +137,12 @@ public class ScoreboardManager {
         s.setScore(scoreNum);
     }
 
-    /**
-     * Helper to create a dynamic line using Teams.
-     * Updated: Removed the 64-character limit for 1.21 support.
-     */
     private void createDynamicLine(Scoreboard board, Objective obj, String teamName, String prefix, String suffix, int scoreNum) {
         Team team = board.registerNewTeam(teamName);
-
-        // Create a unique entry key (Invisible)
-        String entry = ChatColor.values()[scoreNum % 15].toString() + ChatColor.RESET;
-
+        String entry = ChatColor.values()[Math.abs(scoreNum) % 15].toString() + ChatColor.RESET;
         team.addEntry(entry);
         team.setPrefix(ChatColor.translateAlternateColorCodes('&', prefix));
-
-        // NO LIMIT: Gradients are long, so we allow the full suffix.
         team.setSuffix(suffix);
-
         Score s = obj.getScore(entry);
         s.setScore(scoreNum);
     }
@@ -136,17 +152,14 @@ public class ScoreboardManager {
     }
 
     public void updateNameAnimation(Player player, int animationStep) {
+        if (!isScoreboardVisible(player)) return;
         org.bukkit.scoreboard.Scoreboard board = player.getScoreboard();
         org.bukkit.scoreboard.Team nameTeam = board.getTeam("playerName");
 
         if (nameTeam != null) {
             FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
             String preset = data.getString("chat-color");
-
-            // Get the new animated string
             String animated = GradientUtils.getAnimatedGradient(player.getName(), preset, animationStep);
-
-            // Update suffix
             nameTeam.setSuffix(animated);
         }
     }

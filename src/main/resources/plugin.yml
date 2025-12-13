@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.6'
+version: '1.0.7'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -63,7 +63,7 @@ commands:
       usage: /rob <player>
   job:
     description: Join or quit jobs
-    usage: /job <join|quit>
+    usage: /job <join|quit|shop|info|promote>
   myprofile:
     description: View your stats
     usage: /myprofile
@@ -77,6 +77,22 @@ commands:
   setdesc:
     description: Alias for setbio
     usage: /setdesc <text>
+  prisonvaults reload:
+      description: Reload the plugin configuration
+      usage: /prisonvaults reload
+  pvconfig:
+      description: Open the prisonvaults config file and edit it
+      usage: /pvconfig
+  pvscoreboard:
+      description: Toggle the prisonvaults scoreboard
+      usage: /pvscoreboard
+  pvshop:
+      description: Open the job ingredient shops.
+      usage: /pvshop <messhall|smithy>
+      aliases: [ jobshop ]
+  pvhelp:
+      description: List all plugin commands.
+      usage: /pvhelp [page]
 permissions:
   prisonvaults.use:
     default: true
@@ -148,6 +164,18 @@ permissions:
     default: true
   prisonvaults.setdesc:
     description: Alias for setbio permission
+    default: true
+  prisonvaults.pvconfig:
+    description: Allows opening and editing the prisonvaults config file
+    default: op
+  prisonvaults.pvscoreboard:
+    description: Allows toggling the prisonvaults scoreboard
+    default: true
+  prisonvaults.pvshop:
+    description: Allows opening job ingredient shops
+    default: true
+  prisonvaults.pvhelp:
+    description: Allows listing all plugin commands
     default: true
 
 

@@ -1,10 +1,10 @@
 package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
-import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import your existing file
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Sound; // Required for Sound enums
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -14,11 +14,12 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RobCommand implements CommandExecutor {
 
     private final PrisonVaults plugin;
+
     // Settings
-    private static final double ROB_CHANCE = 0.0001;
+    // Note: Success Chance is now in config.yml (rob.success-chance)
     private static final double MIN_ROB = 100.0;
     private static final double MAX_ROB = 50000.0;
-    private static final long COOLDOWN_SECONDS = 7200;
+    private static final long COOLDOWN_SECONDS = 7200; // 2 Hours
 
     public RobCommand(PrisonVaults plugin) {
         this.plugin = plugin;
@@ -31,14 +32,14 @@ public class RobCommand implements CommandExecutor {
 
         if (!robber.hasPermission("prisonvaults.rob")) {
             robber.sendMessage(ChatColor.RED + "You do not have permission to use /rob.");
-            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f); // Error Sound
+            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return true;
         }
 
         if (plugin.cooldownManager.isOnCooldown(robber.getUniqueId(), "rob")) {
             long remaining = plugin.cooldownManager.getRemainingTime(robber.getUniqueId(), "rob");
             robber.sendMessage(ChatColor.RED + "You must wait " + formatTime(remaining) + " before robbing again.");
-            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f); // Error Sound
+            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return true;
         }
 
@@ -51,14 +52,18 @@ public class RobCommand implements CommandExecutor {
 
         if (victim == null || !victim.isOnline() || victim.getUniqueId().equals(robber.getUniqueId())) {
             robber.sendMessage(ChatColor.RED + "Invalid target.");
-            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f); // Error Sound
+            SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return true;
         }
 
         plugin.cooldownManager.setCooldown(robber.getUniqueId(), "rob", COOLDOWN_SECONDS);
 
+        // --- NEW: CONFIGURABLE CHANCE ---
+        // Defaults to 0.05 (5%) if not found in config
+        double successChance = plugin.getConfig().getDouble("rob.success-chance", 0.05);
+
         // FAILED ATTEMPT
-        if (Math.random() > ROB_CHANCE) {
+        if (Math.random() > successChance) {
             robber.sendMessage(ChatColor.RED + "§lROB FAILED! §cYou were caught!");
             victim.sendMessage(ChatColor.YELLOW + "§lALERT! §e" + robber.getName() + " tried to rob you but failed!");
 

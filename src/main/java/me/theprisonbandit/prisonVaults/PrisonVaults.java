@@ -7,13 +7,15 @@ import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.CooldownManager;
 import me.theprisonbandit.prisonVaults.managers.JobManager;
+import me.theprisonbandit.prisonVaults.managers.JobScheduleManager;
 import me.theprisonbandit.prisonVaults.managers.ScoreboardManager;
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
-import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import SoundUtils
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.Sound; // Import Sound
+import org.bukkit.OfflinePlayer; // Imported OfflinePlayer
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -31,8 +33,7 @@ import java.util.*;
 public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     // --- VARIABLES ---
-    // 999 Decillion Cap
-    private static final double MAX_BALANCE = 999 * Math.pow(10, 33);
+    private static final double MAX_BALANCE = 999 * Math.pow(10, 33); // 999 Decillion Cap
 
     private File pricesFile;
     private FileConfiguration pricesConfig;
@@ -49,6 +50,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public MailManager mailManager;
     public CooldownManager cooldownManager;
     public JobManager jobManager;
+    public JobScheduleManager jobScheduleManager;
 
     @Override
     public void onEnable() {
@@ -63,6 +65,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.mailManager = new MailManager(this);
         this.cooldownManager = new CooldownManager(this);
         this.jobManager = new JobManager(this);
+        this.jobScheduleManager = new JobScheduleManager(this);
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -91,11 +94,25 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // Jobs & Profile
         this.getCommand("job").setExecutor(new JobCommand(this));
 
+        // Profile Commands (Updated to share executor)
         ProfileCommand profileCmd = new ProfileCommand(this);
         this.getCommand("myprofile").setExecutor(profileCmd);
         this.getCommand("whois").setExecutor(profileCmd);
         this.getCommand("setbio").setExecutor(profileCmd);
         this.getCommand("setdesc").setExecutor(profileCmd);
+
+        // Configurations
+        ConfigCommand cfgCmd = new ConfigCommand(this);
+        this.getCommand("pvconfig").setExecutor(cfgCmd);
+
+        // Scoreboard
+        this.getCommand("pvscoreboard").setExecutor(new ScoreboardCommand(this));
+
+        //Shop
+        this.getCommand("pvshop").setExecutor(new ShopCommand(this));
+
+        //Help
+        this.getCommand("pvhelp").setExecutor(new HelpCommand());
 
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
@@ -114,30 +131,21 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     @Override
     public void onDisable() {
-        if (gangManager != null) {
-            gangManager.saveGangs();
-        }
-        if (cooldownManager != null) {
-            cooldownManager.saveCooldowns();
-        }
+        if (gangManager != null) gangManager.saveGangs();
+        if (cooldownManager != null) cooldownManager.saveCooldowns();
         getLogger().info("PrisonVaults disabled.");
     }
 
-    // --- COMMAND EXECUTOR (Kept logic) ---
+    // --- COMMAND EXECUTOR ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-
         // RELOAD
         if (label.equalsIgnoreCase("prisonvaults")) {
             if (!sender.hasPermission("prisonvaults.admin")) return true;
             if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
                 reloadAllConfigs();
                 sender.sendMessage(ChatColor.GREEN + "Configs reloaded.");
-
-                // NEW: Success Sound
-                if (sender instanceof Player) {
-                    SoundUtils.playSound((Player) sender, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
-                }
+                if (sender instanceof Player) SoundUtils.playSound((Player) sender, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
                 return true;
             }
         }
@@ -148,20 +156,17 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
             Player player = (Player) sender;
             if (args.length < 2) {
                 player.sendMessage(ChatColor.RED + "Usage: /pay <player> <amount>");
-                // NEW: Error Sound
                 SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return true;
             }
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null || !target.isOnline()) {
                 player.sendMessage(ChatColor.RED + "Offline.");
-                // NEW: Error Sound
                 SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return true;
             }
             if (target.equals(player)) {
                 player.sendMessage(ChatColor.RED + "Cannot pay self.");
-                // NEW: Error Sound
                 SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 return true;
             }
@@ -170,7 +175,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
                 if (amount <= 0) return true;
                 if (getBalance(player) < amount) {
                     player.sendMessage(ChatColor.RED + "Insufficient funds.");
-                    // NEW: Error Sound
                     SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                     return true;
                 }
@@ -178,11 +182,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
                 addMoney(target, amount);
                 player.sendMessage(ChatColor.GREEN + "Paid.");
                 target.sendMessage(ChatColor.GREEN + "Received.");
-
-                // NEW: Dual Success Sound (Money Pickup)
                 SoundUtils.playDualSound(player, target, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-
-                // Update both scoreboards immediately
                 scoreboardManager.updateScoreboard(player);
                 scoreboardManager.updateScoreboard(target);
             } catch (Exception e) {}
@@ -203,8 +203,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
                 SoundUtils.playSound(p, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return true;
             }
-
-            // NEW: Open Sound
             SoundUtils.playSound(p, Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
             openVault(p, v);
         }
@@ -236,17 +234,24 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         d.set("vaults." + vaultNumber, vault.getContents());
         try { d.save(f); } catch (IOException e) {}
     }
-    public String getPlayerRank(Player player) {
+
+    // --- RANK & BALANCE (Updated for OfflinePlayer) ---
+
+    // 1. Get Rank
+    public String getPlayerRank(OfflinePlayer player) {
         FileConfiguration d = getPlayerData(player.getUniqueId());
         if (rankLadder.isEmpty()) return "A";
         return d.getString("rank", rankLadder.keySet().iterator().next());
     }
+    public String getPlayerRank(Player player) { return getPlayerRank((OfflinePlayer) player); }
+
     public void setPlayerRank(Player p, String r) {
         File f = getPlayerDataFile(p.getUniqueId());
         FileConfiguration d = YamlConfiguration.loadConfiguration(f);
         d.set("rank", r);
         try { d.save(f); } catch (IOException e) {}
     }
+
     public int getMaxVaults(Player p) {
         String r = getPlayerRank(p);
         List<String> rs = new ArrayList<>(rankLadder.keySet());
@@ -254,34 +259,29 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         if (i == -1) i = 0;
         return (i + 1) * 4;
     }
-    public double getBalance(Player player) {
+
+    // 2. Get Balance
+    public double getBalance(OfflinePlayer player) {
         FileConfiguration d = getPlayerData(player.getUniqueId());
         return d.getDouble("economy.balance", 0.0);
     }
+    public double getBalance(Player player) { return getBalance((OfflinePlayer) player); }
 
-    // UPDATED: ADD MONEY WITH HARD CAP
     public void addMoney(Player player, double amount) {
         File f = getPlayerDataFile(player.getUniqueId());
         FileConfiguration d = YamlConfiguration.loadConfiguration(f);
-
         double currentBalance = d.getDouble("economy.balance", 0.0);
-
-        // --- CAP LOGIC ---
         if (currentBalance + amount > MAX_BALANCE) {
-            // Set them to exactly the MAX, don't go over
             d.set("economy.balance", MAX_BALANCE);
         } else {
             d.set("economy.balance", currentBalance + amount);
         }
-        // -----------------
-
         try { d.save(f); } catch (IOException e) {}
     }
 
     public void removeMoney(Player player, double amount) {
         File f = getPlayerDataFile(player.getUniqueId());
         FileConfiguration d = YamlConfiguration.loadConfiguration(f);
-        // Direct subtraction, no cap needed for removing
         d.set("economy.balance", d.getDouble("economy.balance", 0.0) - amount);
         try { d.save(f); } catch (IOException e) {}
     }
