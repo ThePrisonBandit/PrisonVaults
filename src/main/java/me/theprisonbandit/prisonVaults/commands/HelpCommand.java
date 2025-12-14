@@ -87,11 +87,21 @@ public class HelpCommand implements CommandExecutor {
         addCmd("/pvconfig set <rob|pickpocket> <decimal>", "Open the prisonvaults config file and edit it");
         addCmd("/pvscoreboard <show|hide>", "Toggle the prisonvaults scoreboard");
         addCmd("/pvhelp [page]", "List all plugin commands");
+        addCmd("/pvcompass", "Get a compass to find your way.");
+        addCmd("/pvinfo", "View plugin information");
+        // NEW PERM COMMAND
+        addCmd("/pvperm <group|user> ...", "Manage permissions (OP Only)");
 
-        // --- STAFF ---
+        // --- STAFF MANAGEMENT ---
         addCmd("/staff", "Open the Staff Management GUI");
         addCmd("/setstaff <player> <rank>", "Set a player's staff rank (OP Only)");
         addCmd("/staffmail <read|clear>", "Check staff notifications/mail");
+
+        // --- PUNISHMENTS (NEW) ---
+        addCmd("/pvkick <player> [reason]", "Kick a player (Owners protected)");
+        addCmd("/pvban <player> [reason]", "Ban a player (Owners protected)");
+        addCmd("/pvwarn <player> <reason>", "Warn a player");
+        addCmd("/pvpardon <player>", "Unban a player");
     }
 
     private void addCmd(String syntax, String desc) {

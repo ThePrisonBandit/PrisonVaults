@@ -19,6 +19,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -53,11 +54,21 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public RankManager rankManager;
     public StaffMailManager staffMailManager;
 
+    // NEW: Permission Manager
+    public PermissionManager permissionManager;
+
+    // NEW: Compass Manager
+    public CompassManager compassManager;
+
+    // NEW: Update Checker
+    public UpdateChecker updateChecker;
+
     @Override
     public void onEnable() {
         // 1. Load Configurations
         loadPrices();
         loadRanks();
+        saveDefaultConfig();
 
         // 2. Initialize Managers
         this.scoreboardManager = new ScoreboardManager(this);
@@ -71,6 +82,15 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // NEW: Staff Managers
         this.rankManager = new RankManager(this);
         this.staffMailManager = new StaffMailManager(this);
+
+        // NEW: Permission Manager
+        this.permissionManager = new PermissionManager(this);
+
+        // NEW: Compass Manager
+        this.compassManager = new CompassManager(this);
+
+        // NEW: Update Checker
+        this.updateChecker = new UpdateChecker(this);
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -119,6 +139,22 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("setstaff").setExecutor(new SetStaffCommand(this));
         this.getCommand("staffmail").setExecutor(new StaffMailCommand(this));
 
+        // Punishment Commands
+        PunishCommands punishCmd = new PunishCommands(this);
+        this.getCommand("pvkick").setExecutor(punishCmd);
+        this.getCommand("pvban").setExecutor(punishCmd);
+        this.getCommand("pvwarn").setExecutor(punishCmd);   // NEW
+        this.getCommand("pvpardon").setExecutor(punishCmd);
+
+        // NEW: Permission Command
+        this.getCommand("pvperm").setExecutor(new PermsCommand(this));
+
+        // NEW: Compass Command
+        this.getCommand("pvcompass").setExecutor(new CompassCommand(this));
+
+        // NEW: Info Command
+        this.getCommand("pvinfo").setExecutor(new InfoCommand(this));
+
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this); // Updated logic inside
@@ -133,16 +169,24 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(this.staffMailManager, this); // For Join Notifications
         this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this); // For Shivs/MedKits
 
+        //NEW: Register Permission Manager Listener
+        this.getServer().getPluginManager().registerEvents(new PermissionListener(this), this);
+
+        // NEW: Update Checker
+        this.updateChecker = new UpdateChecker(this);
+        this.getServer().getPluginManager().registerEvents(this.updateChecker, this);
+
         // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
-        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs) enabled successfully!");
+        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs + Gangs + Schedules + Animated Gradients + Economy PVP + Server Moderation Tools) enabled successfully!");
     }
 
     @Override
     public void onDisable() {
         if (gangManager != null) gangManager.saveGangs();
         if (cooldownManager != null) cooldownManager.saveCooldowns();
+        if (compassManager != null) compassManager.removeAll();
         getLogger().info("PrisonVaults disabled.");
     }
 

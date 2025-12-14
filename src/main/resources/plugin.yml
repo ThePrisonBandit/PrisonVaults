@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.8'
+version: '1.0.9'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -99,97 +99,159 @@ commands:
     usage: /staffmail <read|clear>
     permission: prisonvaults.staff
   setstaff:
-    description: Set a player's staff rank directly
+    description: Set a player's staff rank directly (OP ONLY)
     usage: /setstaff <player> <rank>
-    permission: prisonvaults.admin
+    permission: prisonvaults.setstaff
+  pvkick:
+    description: Kick a player (Owners protected)
+    usage: /pvkick <player> [reason]
+    permission: prisonvaults.kick
+  pvban:
+    description: Ban a player (Owners protected)
+    usage: /pvban <player> [reason]
+    permission: prisonvaults.ban
+  pvwarn:
+    description: Warn a player
+    usage: /pvwarn <player> <reason>
+    permission: prisonvaults.warn
+  pvpardon:
+    description: Unban a player
+    usage: /pvpardon <player>
+    permission: prisonvaults.pardon
+  # NEW PERM COMMAND
+  pvperm:
+    description: Manage PrisonVaults permissions
+    usage: /pvperm <args>
+    permission: prisonvaults.op
+  # NEW COMPASS COMMAND
+  pvcompass:
+    description: Open the prisonvaults compass GUI
+    usage: /pvcompass
+  pvinfo:
+    description: View plugin version and update status
+    usage: /pvinfo
+    permission: prisonvaults.info
 
 permissions:
+  # --- BASIC PERMISSIONS (Default: True) ---
   prisonvaults.use:
     default: true
-  prisonvaults.admin:
-    description: Allows use of admin commands like /addmoney and /setstaff
-    default: op
-  prisonvaults.addmoney:
-    description: Allows giving money to players
-    default: op
   prisonvaults.colorify:
-    description: Allows changing name colors
     default: true
-  prisonvaults.createkit:
-    description: Allows creating kits
-    default: op
   prisonvaults.sell:
-    description: Allows selling items to the server
     default: true
   prisonvaults.rankup:
-    description: Allows ranking up
     default: true
   prisonvaults.kit:
-    description: Allows using kits
     default: true
   prisonvaults.gang:
-    description: Allows gang commands
     default: true
   prisonvaults.mail:
-    description: Allows sending mail
     default: true
   prisonvaults.inbox:
-    description: Allows checking mail
     default: true
   prisonvaults.gangs:
-    description: Allows listing gangs
     default: true
   prisonvaults.pay:
-    description: Allows paying other players
     default: true
   prisonvaults.balance:
-    description: Allows checking balance
     default: true
   prisonvaults.buykit:
-    description: Allows buying kits
     default: true
-  prisonvaults.reload:
-    description: Allows reloading the plugin configuration
-    default: op
   prisonvaults.rob:
-    description: Allows robbing other players
     default: true
   prisonvaults.pv:
-    description: Allows opening personal vaults
     default: true
   prisonvaults.pickpocket:
-    description: Allows pickpocketing other players
     default: true
   prisonvaults.job:
-    description: Allows joining and quitting jobs
     default: true
   prisonvaults.myprofile:
-    description: Allows viewing your profile
     default: true
   prisonvaults.whois:
-    description: Allows viewing other players' profiles
     default: true
   prisonvaults.setbio:
-    description: Allows setting your profile biography
     default: true
   prisonvaults.setdesc:
-    description: Alias for setbio permission
     default: true
-  prisonvaults.pvconfig:
-    description: Allows opening and editing the prisonvaults config file
-    default: op
   prisonvaults.pvscoreboard:
-    description: Allows toggling the prisonvaults scoreboard
     default: true
   prisonvaults.pvshop:
-    description: Allows opening job ingredient shops
     default: true
   prisonvaults.pvhelp:
-    description: Allows listing all plugin commands
     default: true
+  prisonvaults.pvcompass:
+    default: true
+  prisonvaults.pvinfo:
+    default: true
+
+  # --- STAFF INDIVIDUAL NODES ---
+  prisonvaults.warn:
+    default: false
+  prisonvaults.kick:
+    default: false
+  prisonvaults.ban:
+    default: false
+  prisonvaults.pardon:
+    default: false
   prisonvaults.staff:
-    description: Base permission for staff members (mail, chat prefix)
-    default: op
+    default: false
   prisonvaults.staff.manage:
-    description: Allows opening the Staff Management GUI
-    default: op
+    default: false
+  prisonvaults.staffmail:
+    default: false
+  prisonvaults.addmoney:
+    default: false
+  prisonvaults.createkit:
+    default: false
+  prisonvaults.reload:
+    default: false
+  prisonvaults.pvconfig:
+    default: false
+  prisonvaults.setstaff:
+    description: Allows setting staff ranks (Strictly OP)
+    default: false
+
+  # --- RANK HIERARCHIES ---
+
+  prisonvaults.helper:
+    description: Helper permissions
+    default: false
+    children:
+      prisonvaults.staff: true
+      prisonvaults.staffmail: true
+
+  prisonvaults.moderator:
+    description: Moderator permissions (Inherits Helper + Kick/Warn)
+    default: false
+    children:
+      prisonvaults.helper: true
+      prisonvaults.kick: true
+      prisonvaults.warn: true
+
+  prisonvaults.admin:
+    description: Admin permissions (Inherits Mod + Ban/Pardon/Staff GUI/Kits)
+    default: false
+    children:
+      prisonvaults.moderator: true
+      prisonvaults.ban: true
+      prisonvaults.pardon: true
+      prisonvaults.createkit: true
+      prisonvaults.staff.manage: true
+      prisonvaults.reload: true
+      prisonvaults.pvconfig: true
+
+  prisonvaults.coowner:
+    description: Co-Owner permissions (Inherits Admin + Money + SetStaff)
+    default: false
+    children:
+      prisonvaults.admin: true
+      prisonvaults.addmoney: true
+      prisonvaults.setstaff: true # ADDED HERE
+
+  prisonvaults.owner:
+    description: Owner permissions (Inherits Co-Owner + Everything)
+    default: false
+    children:
+      prisonvaults.coowner: true
+      prisonvaults.*: true

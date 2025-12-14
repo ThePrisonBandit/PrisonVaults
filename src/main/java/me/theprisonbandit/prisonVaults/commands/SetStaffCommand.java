@@ -2,9 +2,11 @@ package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.managers.RankManager;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import SoundUtils
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Sound; // Import Sound
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -41,7 +43,6 @@ public class SetStaffCommand implements CommandExecutor {
 
         // 3. Get Target (Offline support)
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
-        // Basic check if player has played before (optional, but good practice)
         if (!target.hasPlayedBefore() && !target.isOnline()) {
             sender.sendMessage(ChatColor.RED + "Warning: " + targetName + " has never joined this server.");
         }
@@ -54,8 +55,17 @@ public class SetStaffCommand implements CommandExecutor {
             plugin.rankManager.setRank(target, rank);
 
             sender.sendMessage(ChatColor.GREEN + "Set " + target.getName() + "'s rank to " + rank.display);
+
+            // 6. Notify & Update Target (NEW CODE)
             if (target.isOnline()) {
-                ((Player)target).sendMessage(ChatColor.GREEN + "Your rank has been updated to " + rank.display);
+                Player p = target.getPlayer();
+                p.sendMessage(ChatColor.GREEN + "Your staff rank has been updated to " + rank.display);
+
+                // Refresh Scoreboard to show new rank immediately
+                plugin.scoreboardManager.setScoreboard(p);
+
+                // Play Success Sound
+                SoundUtils.playSound(p, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
             }
 
         } catch (IllegalArgumentException e) {

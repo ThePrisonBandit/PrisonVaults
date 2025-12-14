@@ -1,0 +1,31 @@
+groups:
+  default:
+    permissions:
+      - prisonvaults.use
+    inheritance: []
+  helper:
+    permissions:
+      - prisonvaults.helper
+    inheritance:
+      - default
+  moderator:
+    permissions:
+      - prisonvaults.moderator
+    inheritance:
+      - helper
+  admin:
+    permissions:
+      - prisonvaults.admin
+    inheritance:
+      - moderator
+  coowner:
+    permissions:
+      - prisonvaults.coowner
+    inheritance:
+      - admin
+  owner:
+    permissions:
+      - prisonvaults.owner
+    inheritance:
+      - coowner
+users: {}

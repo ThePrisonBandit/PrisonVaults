@@ -1,0 +1,7 @@
+# --- UPDATE CHECKER ---
+update-checker:
+  enabled: true
+  # Your Project ID from CurseForge
+  curseforge-project-id: 1401362
+  # Your API Token from the screenshot
+  curseforge-api-key: "29213f04-3046-4b44-ba05-d5d1798d57f8"
