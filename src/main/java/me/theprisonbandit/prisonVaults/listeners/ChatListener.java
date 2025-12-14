@@ -2,7 +2,8 @@ package me.theprisonbandit.prisonVaults.listeners;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.gangs.Gang;
-import me.theprisonbandit.prisonVaults.managers.RankManager; // Import the new RankManager
+import me.theprisonbandit.prisonVaults.managers.ChatChannelManager; // NEW IMPORT
+import me.theprisonbandit.prisonVaults.managers.RankManager;
 import me.theprisonbandit.prisonVaults.utils.GradientUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -20,6 +21,28 @@ public class ChatListener implements Listener {
 
     @EventHandler
     public void onPlayerChat(AsyncPlayerChatEvent event) {
+        // --- NEW CODE: CHANNEL CHECKS ---
+        // Check if player is in a specific chat channel (Staff or Gang)
+        // If so, send to that channel and cancel the global chat event.
+        if (plugin.chatChannelManager != null) {
+            ChatChannelManager.Channel channel = plugin.chatChannelManager.getActiveChannel(event.getPlayer());
+
+            if (channel == ChatChannelManager.Channel.STAFF) {
+                event.setCancelled(true);
+                plugin.chatChannelManager.sendStaffMessage(event.getPlayer(), event.getMessage());
+                return;
+            }
+
+            if (channel == ChatChannelManager.Channel.GANG) {
+                event.setCancelled(true);
+                plugin.chatChannelManager.sendGangMessage(event.getPlayer(), event.getMessage());
+                return;
+            }
+        }
+        // --------------------------------
+
+        // --- OLD CODE (Preserved) ---
+
         // 1. Get Prison Rank (Old Code)
         String rank = plugin.getPlayerRank(event.getPlayer());
 
@@ -48,7 +71,7 @@ public class ChatListener implements Listener {
         // 4. Construct the Prison Rank Prefix (Old Code)
         String prisonRankPrefix = ChatColor.DARK_GRAY + "[" + ChatColor.AQUA + rank + ChatColor.DARK_GRAY + "] ";
 
-        // 5. NEW CODE: Staff/Server Rank Logic
+        // 5. NEW CODE (From previous update): Staff/Server Rank Logic
         // Fetch the rank from RankManager (Owner, Admin, Member, etc.)
         RankManager.Rank serverRank = plugin.rankManager.getRank(event.getPlayer());
 
@@ -58,7 +81,6 @@ public class ChatListener implements Listener {
 
         // 6. Final Assembly (Updated)
         // Order: [Staff] [Gang] [PrisonRank] Name: Message
-        // Allows Staff Rank to be "all the way to the left" as requested.
         event.setFormat(staffPrefix + gangPrefix + prisonRankPrefix + displayName + ChatColor.GRAY + ": " + ChatColor.WHITE + "%2$s");
     }
 }

@@ -66,6 +66,7 @@ public class HelpCommand implements CommandExecutor {
         // --- GANGS ---
         addCmd("/gang", "Main gang command");
         addCmd("/gangs", "List all gangs on the server");
+        addCmd("/gangchat (or /gc)", "Toggle or send gang chat"); // NEW
 
         // --- PROFILES ---
         addCmd("/myprofile", "View your stats");
@@ -75,6 +76,10 @@ public class HelpCommand implements CommandExecutor {
         // --- MAIL ---
         addCmd("/mail <gang> or <player>", "Send mail");
         addCmd("/inbox", "Check mail");
+
+        // --- PETS (NEW) ---
+        addCmd("/pets", "Open your pet collection");
+        addCmd("/petshop", "Buy new pets");
 
         // --- KITS ---
         addCmd("/kit <name>", "Get a kit");
@@ -89,15 +94,15 @@ public class HelpCommand implements CommandExecutor {
         addCmd("/pvhelp [page]", "List all plugin commands");
         addCmd("/pvcompass", "Get a compass to find your way.");
         addCmd("/pvinfo", "View plugin information");
-        // NEW PERM COMMAND
         addCmd("/pvperm <group|user> ...", "Manage permissions (OP Only)");
 
         // --- STAFF MANAGEMENT ---
         addCmd("/staff", "Open the Staff Management GUI");
         addCmd("/setstaff <player> <rank>", "Set a player's staff rank (OP Only)");
         addCmd("/staffmail <read|clear>", "Check staff notifications/mail");
+        addCmd("/staffchat (or /sc)", "Toggle or send staff chat"); // NEW
 
-        // --- PUNISHMENTS (NEW) ---
+        // --- PUNISHMENTS ---
         addCmd("/pvkick <player> [reason]", "Kick a player (Owners protected)");
         addCmd("/pvban <player> [reason]", "Ban a player (Owners protected)");
         addCmd("/pvwarn <player> <reason>", "Warn a player");

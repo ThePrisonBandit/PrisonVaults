@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.9'
+version: '1.0.10'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -131,6 +131,21 @@ commands:
     description: View plugin version and update status
     usage: /pvinfo
     permission: prisonvaults.info
+  staffchat:
+    description: Toggle staff chat or send message
+    usage: /sc [msg]
+    aliases: [ sc ]
+    permission: prisonvaults.staffchat # FIXED: Matched to specific permission node
+  gangchat:
+    description: Toggle gang chat or send message
+    usage: /gc [msg]
+    aliases: [ gc ]
+  pets:
+    description: Open your pet selector
+    usage: /pets
+  petshop:
+    description: Open the pet shop
+    usage: /petshop
 
 permissions:
   # --- BASIC PERMISSIONS (Default: True) ---
@@ -184,6 +199,12 @@ permissions:
     default: true
   prisonvaults.pvinfo:
     default: true
+  prisonvaults.gangchat:
+    default: true
+  prisonvaults.pets:
+    default: true
+  prisonvaults.petshop:
+    default: true
 
   # --- STAFF INDIVIDUAL NODES ---
   prisonvaults.warn:
@@ -195,6 +216,7 @@ permissions:
   prisonvaults.pardon:
     default: false
   prisonvaults.staff:
+    description: Allows access to staff features
     default: false
   prisonvaults.staff.manage:
     default: false
@@ -209,7 +231,9 @@ permissions:
   prisonvaults.pvconfig:
     default: false
   prisonvaults.setstaff:
-    description: Allows setting staff ranks (Strictly OP)
+    description: Allows setting staff ranks
+    default: false
+  prisonvaults.staffchat: # Used by the command now
     default: false
 
   # --- RANK HIERARCHIES ---
@@ -220,6 +244,7 @@ permissions:
     children:
       prisonvaults.staff: true
       prisonvaults.staffmail: true
+      prisonvaults.staffchat: true
 
   prisonvaults.moderator:
     description: Moderator permissions (Inherits Helper + Kick/Warn)
@@ -247,7 +272,7 @@ permissions:
     children:
       prisonvaults.admin: true
       prisonvaults.addmoney: true
-      prisonvaults.setstaff: true # ADDED HERE
+      prisonvaults.setstaff: true
 
   prisonvaults.owner:
     description: Owner permissions (Inherits Co-Owner + Everything)

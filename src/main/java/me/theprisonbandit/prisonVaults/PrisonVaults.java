@@ -6,6 +6,9 @@ import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.*;
+import me.theprisonbandit.prisonVaults.pets.PetAttackListener;
+import me.theprisonbandit.prisonVaults.pets.PetListener; // NEW
+import me.theprisonbandit.prisonVaults.pets.PetManager;   // NEW
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
 import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
@@ -19,7 +22,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -63,6 +65,12 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     // NEW: Update Checker
     public UpdateChecker updateChecker;
 
+    // NEW: Chat Channel Manager
+    public ChatChannelManager chatChannelManager;
+
+    // NEW: Pet Manager
+    public PetManager petManager;
+
     @Override
     public void onEnable() {
         // 1. Load Configurations
@@ -79,18 +87,24 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.jobManager = new JobManager(this);
         this.jobScheduleManager = new JobScheduleManager(this);
 
-        // NEW: Staff Managers
+        // Staff Managers
         this.rankManager = new RankManager(this);
         this.staffMailManager = new StaffMailManager(this);
 
-        // NEW: Permission Manager
+        // Permission Manager
         this.permissionManager = new PermissionManager(this);
 
-        // NEW: Compass Manager
+        // Compass Manager
         this.compassManager = new CompassManager(this);
 
-        // NEW: Update Checker
+        // Update Checker
         this.updateChecker = new UpdateChecker(this);
+
+        // Chat Channel Manager
+        this.chatChannelManager = new ChatChannelManager(this);
+
+        // NEW: Pet Manager
+        this.petManager = new PetManager(this);
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -134,7 +148,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("pvshop").setExecutor(new ShopCommand(this));
         this.getCommand("pvhelp").setExecutor(new HelpCommand());
 
-        // NEW: Staff Commands
+        // Staff Commands
         this.getCommand("staff").setExecutor(new StaffManagerCommand(this));
         this.getCommand("setstaff").setExecutor(new SetStaffCommand(this));
         this.getCommand("staffmail").setExecutor(new StaffMailCommand(this));
@@ -143,47 +157,69 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         PunishCommands punishCmd = new PunishCommands(this);
         this.getCommand("pvkick").setExecutor(punishCmd);
         this.getCommand("pvban").setExecutor(punishCmd);
-        this.getCommand("pvwarn").setExecutor(punishCmd);   // NEW
+        this.getCommand("pvwarn").setExecutor(punishCmd);
         this.getCommand("pvpardon").setExecutor(punishCmd);
 
-        // NEW: Permission Command
+        // Permission Command
         this.getCommand("pvperm").setExecutor(new PermsCommand(this));
 
-        // NEW: Compass Command
+        // Compass Command
         this.getCommand("pvcompass").setExecutor(new CompassCommand(this));
 
-        // NEW: Info Command
+        // Info Command
         this.getCommand("pvinfo").setExecutor(new InfoCommand(this));
+
+        // Channel Commands
+        this.getCommand("staffchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.STAFF));
+        this.getCommand("gangchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.GANG));
+
+        // NEW: Pet Commands
+        PetCommand petCmd = new PetCommand(this);
+        this.getCommand("pets").setExecutor(petCmd);
+        this.getCommand("petshop").setExecutor(petCmd);
 
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new ChatListener(this), this); // Updated logic inside
+        this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
         this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
 
-        // NEW: Register Staff & Ability Listeners
+        // Register Staff & Ability Listeners
         this.getServer().getPluginManager().registerEvents(new StaffManagementListener(this), this);
-        this.getServer().getPluginManager().registerEvents(this.staffMailManager, this); // For Join Notifications
-        this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this); // For Shivs/MedKits
+        this.getServer().getPluginManager().registerEvents(this.staffMailManager, this);
+        this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this);
 
-        //NEW: Register Permission Manager Listener
+        // Register Permission Manager Listener
         this.getServer().getPluginManager().registerEvents(new PermissionListener(this), this);
 
-        // NEW: Update Checker
+        // Update Checker
         this.updateChecker = new UpdateChecker(this);
         this.getServer().getPluginManager().registerEvents(this.updateChecker, this);
+
+        // NEW: Pet Listener
+        this.getServer().getPluginManager().registerEvents(new PetListener(this), this);
+
+        // NEW: Pet Attack Listener
+        this.getServer().getPluginManager().registerEvents(new PetAttackListener(this), this);
 
         // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
-        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs + Gangs + Schedules + Animated Gradients + Economy PVP + Server Moderation Tools) enabled successfully!");
+        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs + Gangs + Schedules + Animated Gradients + Economy PVP + Server Moderation Tools + Pets) enabled successfully!");
     }
 
     @Override
     public void onDisable() {
+        // NEW: Cleanup Pets
+        if (petManager != null) {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                petManager.despawnPet(p);
+            }
+        }
+
         if (gangManager != null) gangManager.saveGangs();
         if (cooldownManager != null) cooldownManager.saveCooldowns();
         if (compassManager != null) compassManager.removeAll();
