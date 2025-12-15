@@ -7,6 +7,7 @@ import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,6 +21,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,88 +32,142 @@ public class GangListener implements Listener {
         this.plugin = plugin;
     }
 
-    // --- GUI CLICK HANDLER (Preserved) ---
+    // --- GUI CLICK HANDLER ---
     @EventHandler
     public void onMenuClick(InventoryClickEvent e) {
         String title = e.getView().getTitle();
         if (e.getCurrentItem() == null) return;
         Player player = (Player) e.getWhoClicked();
+        ItemStack clicked = e.getCurrentItem();
 
+        if (clicked == null || clicked.getType() == Material.AIR) return;
+
+        // --- GLOBAL NAVIGATION BUTTONS ---
+        if (clicked.getType() == Material.BARRIER && clicked.hasItemMeta() && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Close")) {
+            player.closeInventory();
+            return;
+        }
+
+        // --- MAIN GANG MANAGER ---
         if (title.equals(ChatColor.DARK_GRAY + "Gang Manager")) {
             e.setCancelled(true);
             Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
             if (gang == null) return;
 
-            ItemStack item = e.getCurrentItem();
-
-            if (item.getType() == Material.NAME_TAG) {
+            if (clicked.getType() == Material.NAME_TAG) {
                 startChatInput(player, "NAME");
-            } else if (item.getType() == Material.PAPER) {
+            } else if (clicked.getType() == Material.OAK_SIGN) {
+                startChatInput(player, "TAG");
+            } else if (clicked.getType() == Material.PAPER) {
                 startChatInput(player, "DESC");
-            } else if (item.getType() == Material.RED_DYE) {
+            } else if (clicked.getType() == Material.RED_DYE) {
                 openColorGUI(player);
-            } else if (item.getType() == Material.TNT) {
+            }
+            // NEW: Ban Manager Button
+            else if (clicked.getType() == Material.IRON_BARS) {
+                openBanManagerGUI(player, gang);
+            }
+            // --- DISBAND BUTTON LOGIC ---
+            else if (clicked.getType() == Material.TNT) {
                 if (!gang.getOwner().equals(player.getUniqueId())) {
                     player.sendMessage(ChatColor.RED + "Only the Gang Owner can disband the gang!");
                     SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-                    player.closeInventory();
                     return;
                 }
-                plugin.gangManager.disbandGang(gang);
+
                 player.closeInventory();
-                SoundUtils.playSound(player, Sound.BLOCK_ANVIL_BREAK, 1.0f, 0.5f);
-            } else if (item.getType() == Material.PLAYER_HEAD) {
+                plugin.gangManager.chatInputMode.put(player.getUniqueId(), "CONFIRM_DISBAND");
+                player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "WARNING: " + ChatColor.RED + "You are about to disband your gang!");
+                player.sendMessage(ChatColor.YELLOW + "Type " + ChatColor.GREEN + "confirm" + ChatColor.YELLOW + " to proceed or " + ChatColor.RED + "no" + ChatColor.YELLOW + " to cancel.");
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.5f);
+            } else if (clicked.getType() == Material.PLAYER_HEAD) {
                 openMembersGUI(player, gang);
-            } else {
-                SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
             }
         }
+
+        // --- NEW: BAN MANAGER GUI ---
+        else if (title.equals(ChatColor.DARK_GRAY + "Gang Bans")) {
+            e.setCancelled(true);
+            Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
+            if (gang == null) return;
+
+            if (clicked.getType() == Material.ARROW && clicked.hasItemMeta() && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Back")) {
+                plugin.gangManager.openMainGangMenu(player);
+                return;
+            }
+
+            // "Ban New Player" Button (Anvil)
+            if (clicked.getType() == Material.ANVIL) {
+                startChatInput(player, "BAN_PLAYER");
+                return;
+            }
+
+            // Unban Logic (Clicking a skull)
+            if (clicked.getType() == Material.PLAYER_HEAD) {
+                SkullMeta meta = (SkullMeta) clicked.getItemMeta();
+                OfflinePlayer target = meta.getOwningPlayer();
+
+                if (target != null) {
+                    gang.removeBan(target.getUniqueId());
+                    plugin.gangManager.saveGangs();
+                    player.sendMessage(ChatColor.GREEN + "Unbanned " + target.getName() + ".");
+                    openBanManagerGUI(player, gang); // Refresh menu
+                    SoundUtils.playSound(player, Sound.BLOCK_ANVIL_USE, 1.0f, 2.0f);
+                }
+            }
+        }
+
+        // --- MEMBER MANAGEMENT ---
         else if (title.equals(ChatColor.DARK_GRAY + "Gang Members")) {
             e.setCancelled(true);
             Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
             if (gang == null) return;
 
-            ItemStack item = e.getCurrentItem();
-            if (item.getType() == Material.ARROW) {
-                player.closeInventory();
-                player.sendMessage(ChatColor.YELLOW + "Type /gang manager to return to the main menu.");
-                SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+            if (clicked.getType() == Material.ARROW && clicked.hasItemMeta() && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Back")) {
+                plugin.gangManager.openMainGangMenu(player);
                 return;
             }
-            if (item.getType() == Material.PLAYER_HEAD) {
-                handleMemberClick(e, gang, player, item);
-                if (player.getOpenInventory().getTitle().equals(ChatColor.DARK_GRAY + "Gang Members")) {
-                    openMembersGUI(player, gang);
-                }
+
+            if (clicked.getType() == Material.PLAYER_HEAD) {
+                handleMemberClick(e, gang, player, clicked);
+                openMembersGUI(player, gang);
             }
         }
+
+        // --- COLOR SELECTOR ---
         else if (title.equals(ChatColor.DARK_GRAY + "Gang Color Selector")) {
             e.setCancelled(true);
             Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
             if (gang == null) return;
 
-            String colorCode = getColorFromItem(e.getCurrentItem().getType());
+            if (clicked.getType() == Material.ARROW && clicked.hasItemMeta() && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Back")) {
+                plugin.gangManager.openMainGangMenu(player);
+                return;
+            }
+
+            String colorCode = getColorFromItem(clicked.getType());
             if (colorCode != null) {
                 gang.setColor(colorCode);
                 plugin.gangManager.saveGangs();
                 player.sendMessage(ChatColor.GREEN + "Gang color updated!");
-                player.closeInventory();
                 refreshGangScoreboards(gang);
                 SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
             }
         }
+
+        // --- INBOX ---
         else if (title.equals(ChatColor.DARK_BLUE + "Inbox")) {
             e.setCancelled(true);
-            if (e.getCurrentItem().getType() == Material.BARRIER) {
-                plugin.mailManager.clearInbox(e.getWhoClicked().getUniqueId());
-                e.getWhoClicked().closeInventory();
-                e.getWhoClicked().sendMessage(ChatColor.RED + "Inbox cleared.");
-                SoundUtils.playSound((Player) e.getWhoClicked(), Sound.UI_BUTTON_CLICK, 1.0f, 0.5f);
+            if (clicked.getType() == Material.BARRIER && clicked.hasItemMeta() && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Clear")) {
+                plugin.mailManager.clearInbox(player.getUniqueId());
+                player.closeInventory();
+                player.sendMessage(ChatColor.RED + "Inbox cleared.");
+                SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 0.5f);
             }
         }
     }
 
-    // --- CHAT INPUT LOGIC (FIXED) ---
+    // --- CHAT INPUT LOGIC ---
     @EventHandler
     public void onChat(AsyncPlayerChatEvent e) {
         UUID id = e.getPlayer().getUniqueId();
@@ -123,29 +179,134 @@ public class GangListener implements Listener {
             Gang gang = plugin.gangManager.getPlayerGang(id);
 
             if (gang != null) {
-                // FIX: Run Scoreboard updates on the Main Server Thread
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (mode.equals("NAME")) gang.setName(input);
-                    if (mode.equals("DESC")) gang.setDescription(input);
+
+                    // --- BAN PLAYER ---
+                    if (mode.equals("BAN_PLAYER")) {
+                        String targetName = input;
+                        OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
+                        // Basic check if they have played before or are online
+                        if (target != null && (target.hasPlayedBefore() || target.isOnline())) {
+                            if (gang.getOwner().equals(target.getUniqueId())) {
+                                e.getPlayer().sendMessage(ChatColor.RED + "You cannot ban yourself!");
+                            } else {
+                                // Ban them
+                                gang.addBan(target.getUniqueId());
+
+                                // Kick if currently in gang
+                                if (gang.getMembers().containsKey(target.getUniqueId())) {
+                                    plugin.gangManager.kickMember(gang, target.getUniqueId());
+                                    e.getPlayer().sendMessage(ChatColor.YELLOW + "Player was in the gang and has been kicked.");
+                                }
+
+                                plugin.gangManager.saveGangs();
+                                e.getPlayer().sendMessage(ChatColor.RED + "Banned " + target.getName() + " from the gang.");
+                            }
+                        } else {
+                            e.getPlayer().sendMessage(ChatColor.RED + "Player not found or never played.");
+                        }
+                        openBanManagerGUI(e.getPlayer(), gang);
+                        return;
+                    }
+
+                    // --- DISBAND CONFIRMATION ---
+                    if (mode.equals("CONFIRM_DISBAND")) {
+                        if (input.equalsIgnoreCase("confirm")) {
+                            String gName = gang.getName();
+                            String gColor = gang.getColor();
+                            for (UUID memberId : gang.getMembers().keySet()) {
+                                Player member = Bukkit.getPlayer(memberId);
+                                if (member != null && member.isOnline()) {
+                                    if (!member.getUniqueId().equals(id)) {
+                                        member.sendMessage(ChatColor.RED + "Your gang " +
+                                                ChatColor.translateAlternateColorCodes('&', gColor + gName) +
+                                                ChatColor.RED + " has been disbanded!");
+                                        member.sendMessage(ChatColor.RED + "You are no longer in a gang.");
+                                    }
+                                }
+                            }
+                            plugin.gangManager.disbandGang(gang);
+                            e.getPlayer().sendMessage(ChatColor.GREEN + "Gang Disbanded Successfully.");
+                            SoundUtils.playSound(e.getPlayer(), Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+                        } else {
+                            e.getPlayer().sendMessage(ChatColor.RED + "Disband Cancelled.");
+                            plugin.gangManager.openMainGangMenu(e.getPlayer());
+                        }
+                        return;
+                    }
+
+                    // --- OTHER INPUTS ---
+                    if (mode.equals("NAME")) {
+                        gang.setName(input);
+                        e.getPlayer().sendMessage(ChatColor.GREEN + "Gang Name updated!");
+                    } else if (mode.equals("TAG")) {
+                        if (input.length() > 5) {
+                            e.getPlayer().sendMessage(ChatColor.RED + "Tag too long! Max 5 characters.");
+                        } else {
+                            gang.setTag(input);
+                            e.getPlayer().sendMessage(ChatColor.GREEN + "Gang Tag updated!");
+                        }
+                    } else if (mode.equals("DESC")) {
+                        gang.setDescription(input);
+                        e.getPlayer().sendMessage(ChatColor.GREEN + "Description updated!");
+                    }
 
                     plugin.gangManager.saveGangs();
-                    e.getPlayer().sendMessage(ChatColor.GREEN + "Setting updated!");
-
-                    refreshGangScoreboards(gang); // Safe to call here
-
+                    refreshGangScoreboards(gang);
                     SoundUtils.playSound(e.getPlayer(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+                    plugin.gangManager.openMainGangMenu(e.getPlayer());
                 });
             }
         }
     }
 
-    // --- HELPERS ---
+    // --- HELPER METHODS (Must be inside the class) ---
+
+    private void startChatInput(Player p, String mode) {
+        p.closeInventory();
+        plugin.gangManager.chatInputMode.put(p.getUniqueId(), mode);
+        p.sendMessage(ChatColor.GREEN + "Type the new " + mode.toLowerCase() + " in chat now...");
+        SoundUtils.playSound(p, Sound.UI_BUTTON_CLICK, 1.0f, 2.0f);
+    }
+
+    private void openBanManagerGUI(Player player, Gang gang) {
+        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_GRAY + "Gang Bans");
+
+        // List Banned Players
+        int slot = 0;
+        for (UUID bannedId : gang.getBannedPlayers()) {
+            if (slot >= 45) break;
+            OfflinePlayer offP = Bukkit.getOfflinePlayer(bannedId);
+
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            meta.setOwningPlayer(offP);
+            meta.setDisplayName(ChatColor.RED + (offP.getName() != null ? offP.getName() : "Unknown"));
+            meta.setLore(Collections.singletonList(ChatColor.YELLOW + "Click to Unban"));
+            head.setItemMeta(meta);
+
+            inv.setItem(slot++, head);
+        }
+
+        // Controls
+        inv.setItem(49, createItem(Material.ANVIL, ChatColor.RED + "Ban New Player", "Type name in chat"));
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        backMeta.setDisplayName(ChatColor.RED + "Back");
+        back.setItemMeta(backMeta);
+        inv.setItem(45, back);
+
+        player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+    }
+
     private void openMembersGUI(Player player, Gang gang) {
         Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_GRAY + "Gang Members");
         int slot = 0;
         for (UUID memberId : gang.getMembers().keySet()) {
             if (memberId.equals(gang.getOwner())) continue;
-            if (slot >= 54) break;
+            if (slot >= 45) break;
 
             Rank r = gang.getMembers().get(memberId);
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
@@ -154,7 +315,7 @@ public class GangListener implements Listener {
             meta.setDisplayName(ChatColor.GOLD + Bukkit.getOfflinePlayer(memberId).getName());
 
             List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.WHITE + "Rank: " + r.name());
+            lore.add(ChatColor.WHITE + "Rank: " + r.display);
             lore.add(ChatColor.GRAY + "Left-Click: Promote");
             lore.add(ChatColor.GRAY + "Right-Click: Demote");
             lore.add(ChatColor.RED + "Shift-Click: Kick");
@@ -163,11 +324,19 @@ public class GangListener implements Listener {
             head.setItemMeta(meta);
             inv.setItem(slot++, head);
         }
+
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta backMeta = back.getItemMeta();
-        backMeta.setDisplayName(ChatColor.RED + "Go Back");
+        backMeta.setDisplayName(ChatColor.RED + "Back");
         back.setItemMeta(backMeta);
-        inv.setItem(49, back);
+        inv.setItem(45, back);
+
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta cm = close.getItemMeta();
+        cm.setDisplayName(ChatColor.RED + "Close");
+        close.setItemMeta(cm);
+        inv.setItem(49, close);
+
         player.openInventory(inv);
         SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
     }
@@ -191,6 +360,19 @@ public class GangListener implements Listener {
         inv.setItem(15, createItem(Material.BLUE_WOOL, ChatColor.BLUE + "Blue"));
         inv.setItem(16, createItem(Material.PINK_WOOL, ChatColor.LIGHT_PURPLE + "Pink"));
         inv.setItem(22, createItem(Material.WHITE_WOOL, ChatColor.WHITE + "White"));
+
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        backMeta.setDisplayName(ChatColor.RED + "Back");
+        back.setItemMeta(backMeta);
+        inv.setItem(18, back);
+
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta cm = close.getItemMeta();
+        cm.setDisplayName(ChatColor.RED + "Close");
+        close.setItemMeta(cm);
+        inv.setItem(26, close);
+
         player.openInventory(inv);
         SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
     }
@@ -216,36 +398,66 @@ public class GangListener implements Listener {
 
         Rank current = gang.getMembers().get(targetId);
 
+        // --- PROMOTE LOGIC ---
         if (e.getClick() == ClickType.LEFT) {
-            if (current == Rank.THUG) setRank(gang, targetId, Rank.ELITE);
-            else if (current == Rank.MEMBER) setRank(gang, targetId, Rank.THUG);
+            if (current == Rank.MEMBER) setRank(gang, targetId, Rank.HUSTLER);
+            else if (current == Rank.HUSTLER) setRank(gang, targetId, Rank.BRUTE);
+            else if (current == Rank.BRUTE) setRank(gang, targetId, Rank.THUG);
+            else if (current == Rank.THUG) setRank(gang, targetId, Rank.SHOT_CALLER);
+            else if (current == Rank.SHOT_CALLER) setRank(gang, targetId, Rank.ELITE);
             else if (current == Rank.ELITE) setRank(gang, targetId, Rank.CO_LEADER);
-            player.sendMessage(ChatColor.GREEN + "Promoted.");
+            else player.sendMessage(ChatColor.RED + "Cannot promote further!");
+
+            player.sendMessage(ChatColor.GREEN + "Promoted to " + gang.getMembers().get(targetId).display);
             SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 2.0f);
-        } else if (e.getClick() == ClickType.RIGHT) {
+
+            Player targetPlayer = Bukkit.getPlayer(targetId);
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                targetPlayer.sendMessage(ChatColor.GREEN + "You have been promoted to " + gang.getMembers().get(targetId).display + "!");
+            }
+
+        }
+        // --- DEMOTE LOGIC ---
+        else if (e.getClick() == ClickType.RIGHT) {
             if (current == Rank.CO_LEADER) setRank(gang, targetId, Rank.ELITE);
-            else if (current == Rank.ELITE) setRank(gang, targetId, Rank.THUG);
-            else if (current == Rank.THUG) setRank(gang, targetId, Rank.MEMBER);
-            player.sendMessage(ChatColor.YELLOW + "Demoted.");
+            else if (current == Rank.ELITE) setRank(gang, targetId, Rank.SHOT_CALLER);
+            else if (current == Rank.SHOT_CALLER) setRank(gang, targetId, Rank.THUG);
+            else if (current == Rank.THUG) setRank(gang, targetId, Rank.BRUTE);
+            else if (current == Rank.BRUTE) setRank(gang, targetId, Rank.HUSTLER);
+            else if (current == Rank.HUSTLER) setRank(gang, targetId, Rank.MEMBER);
+            else player.sendMessage(ChatColor.RED + "Cannot demote further!");
+
+            player.sendMessage(ChatColor.YELLOW + "Demoted to " + gang.getMembers().get(targetId).display);
             SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);
-        } else if (e.getClick() == ClickType.SHIFT_LEFT) {
+
+            Player targetPlayer = Bukkit.getPlayer(targetId);
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                targetPlayer.sendMessage(ChatColor.RED + "You have been demoted to " + gang.getMembers().get(targetId).display + ".");
+            }
+
+        }
+        // --- KICK LOGIC ---
+        else if (e.getClick() == ClickType.SHIFT_LEFT) {
             if (current == Rank.LEADER) {
                 player.sendMessage(ChatColor.RED + "You cannot kick the leader!");
                 SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                 return;
             }
+
+            Player targetPlayer = Bukkit.getPlayer(targetId);
+            if (targetPlayer != null && targetPlayer.isOnline()) {
+                String gName = gang.getName();
+                String gColor = gang.getColor();
+                targetPlayer.sendMessage(ChatColor.RED + "You were kicked from " +
+                        ChatColor.translateAlternateColorCodes('&', gColor + gName) + ChatColor.RED + ".");
+            }
+
             plugin.gangManager.kickMember(gang, targetId);
             player.sendMessage(ChatColor.RED + "Kicked member.");
             SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            player.closeInventory();
         }
-    }
 
-    private void startChatInput(Player p, String mode) {
-        p.closeInventory();
-        plugin.gangManager.chatInputMode.put(p.getUniqueId(), mode);
-        p.sendMessage(ChatColor.GREEN + "Type the new value in chat now...");
-        SoundUtils.playSound(p, Sound.UI_BUTTON_CLICK, 1.0f, 2.0f);
+        refreshGangScoreboards(gang);
     }
 
     private void setRank(Gang g, UUID u, Rank r) {
@@ -254,9 +466,16 @@ public class GangListener implements Listener {
     }
 
     private ItemStack createItem(Material mat, String name) {
+        return createItem(mat, name, null);
+    }
+
+    private ItemStack createItem(Material mat, String name, String lore) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
+        if (lore != null) {
+            meta.setLore(Collections.singletonList(ChatColor.GRAY + lore));
+        }
         item.setItemMeta(meta);
         return item;
     }

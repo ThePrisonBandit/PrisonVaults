@@ -27,7 +27,9 @@ public class PetManager {
     private final Map<UUID, Entity> activePets = new HashMap<>();
     private final Map<UUID, PetType> activePetTypes = new HashMap<>();
 
-    // Tracks when a pet is busy attacking
+    // NEW: Tracks players who are currently typing a nickname
+    public final Map<UUID, PetType> renamingPlayers = new HashMap<>();
+
     private final Map<UUID, Long> petAttackCooldowns = new HashMap<>();
     private final Set<UUID> respawningPlayers = new HashSet<>();
 
@@ -48,6 +50,15 @@ public class PetManager {
         return activePets.containsValue(entity);
     }
 
+    public Player getPetOwner(Entity pet) {
+        for (Map.Entry<UUID, Entity> entry : activePets.entrySet()) {
+            if (entry.getValue().equals(pet)) {
+                return Bukkit.getPlayer(entry.getKey());
+            }
+        }
+        return null;
+    }
+
     public PetType getPetType(Entity entity) {
         for (Map.Entry<UUID, Entity> entry : activePets.entrySet()) {
             if (entry.getValue().equals(entity)) {
@@ -57,37 +68,69 @@ public class PetManager {
         return null;
     }
 
+    // --- NICKNAME LOGIC ---
+
+    public void setPetNickname(Player player, PetType type, String nickname) {
+        if (!hasPet(player, type)) {
+            player.sendMessage(ChatColor.RED + "You do not own a " + type.display + "!");
+            return;
+        }
+
+        config.set("nicknames." + player.getUniqueId() + "." + type.name(), nickname);
+        save();
+
+        if (activePetTypes.get(player.getUniqueId()) == type) {
+            Entity pet = activePets.get(player.getUniqueId());
+            if (pet instanceof LivingEntity) {
+                updatePetNametag((LivingEntity) pet);
+            }
+        }
+        player.sendMessage(ChatColor.GREEN + "Set nickname for " + type.display + " to: " + ChatColor.translateAlternateColorCodes('&', nickname));
+    }
+
+    public String getPetDisplayName(Player player, PetType type) {
+        String nick = config.getString("nicknames." + player.getUniqueId() + "." + type.name());
+        String baseName = ChatColor.GOLD + player.getName() + "'s " + ChatColor.YELLOW + type.display;
+
+        if (nick != null && !nick.isEmpty()) {
+            String coloredNick = ChatColor.translateAlternateColorCodes('&', nick);
+            return baseName + ChatColor.GRAY + " (" + ChatColor.RESET + coloredNick + ChatColor.GRAY + ")";
+        }
+        return baseName;
+    }
+
     public void updatePetNametag(LivingEntity pet) {
-        String ownerName = "Unknown";
+        Player owner = null;
         PetType type = null;
+
         for (Map.Entry<UUID, Entity> entry : activePets.entrySet()) {
             if (entry.getValue().equals(pet)) {
-                Player p = Bukkit.getPlayer(entry.getKey());
-                if (p != null) ownerName = p.getName();
+                owner = Bukkit.getPlayer(entry.getKey());
                 type = activePetTypes.get(entry.getKey());
                 break;
             }
         }
-        if (type == null) return;
+
+        if (owner == null || type == null) return;
+
+        String displayName = getPetDisplayName(owner, type);
         int hp = (int) pet.getHealth();
-        String name = ChatColor.GOLD + ownerName + "'s " + type.display + ChatColor.RED + " " + hp + "❤";
-        pet.setCustomName(name);
+        String finalName = displayName + ChatColor.RED + " " + hp + "❤";
+
+        pet.setCustomName(finalName);
         pet.setCustomNameVisible(true);
     }
 
+    // ... (Keep existing methods: handlePetDeath, attackTarget, spawnPet, etc.) ...
+
     public void handlePetDeath(Player owner) {
         if (respawningPlayers.contains(owner.getUniqueId())) return;
-
         activePets.remove(owner.getUniqueId());
         PetType type = activePetTypes.get(owner.getUniqueId());
-
         if (type == null) return;
-
         owner.sendMessage(ChatColor.RED + "Your pet " + type.display + " died!");
         owner.sendMessage(ChatColor.GRAY + "Respawning in 10 seconds...");
-
         respawningPlayers.add(owner.getUniqueId());
-
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -102,56 +145,55 @@ public class PetManager {
         }.runTaskLater(plugin, 200L);
     }
 
-    // --- SMART COMBAT LOGIC ---
     public void attackTarget(Player owner, LivingEntity target) {
         Entity rawPet = activePets.get(owner.getUniqueId());
         if (rawPet == null || !rawPet.isValid() || !(rawPet instanceof LivingEntity)) return;
         LivingEntity pet = (LivingEntity) rawPet;
 
-        // Prevent spamming attacks too fast (1 second cooldown for decision making)
+        // Cooldown check (1 second between attacks)
         if (petAttackCooldowns.containsKey(owner.getUniqueId())) {
             if (System.currentTimeMillis() < petAttackCooldowns.get(owner.getUniqueId())) return;
         }
         petAttackCooldowns.put(owner.getUniqueId(), System.currentTimeMillis() + 1000);
 
-        // Face the target
         Location petLoc = pet.getLocation();
-        Location targetLoc = target.getLocation().add(0, target.getHeight() / 2, 0); // Aim for body
+        Location targetLoc = target.getLocation().add(0, target.getHeight() / 2, 0);
         Vector direction = targetLoc.toVector().subtract(petLoc.toVector()).normalize();
 
+        // Make pet look at target
         Location lookLoc = petLoc.clone();
         lookLoc.setDirection(direction);
         pet.teleport(lookLoc);
 
-        // --- RANGED ATTACK LOGIC ---
-        if (pet instanceof Skeleton || pet instanceof WitherSkeleton) {
-            // Skeletons shoot arrows
+        // --- ATTACK LOGIC ---
+
+        // 1. Ranged Attackers
+        // REMOVED "|| pet instanceof WitherSkeleton" from here so it uses melee instead!
+        if (pet instanceof Skeleton) {
             pet.launchProjectile(Arrow.class, direction.multiply(1.6));
             owner.getWorld().playSound(petLoc, Sound.ENTITY_SKELETON_SHOOT, 1f, 1f);
 
         } else if (pet instanceof Blaze) {
-            // Blazes shoot small fireballs
             pet.launchProjectile(SmallFireball.class, direction.multiply(1.2));
             owner.getWorld().playSound(petLoc, Sound.ENTITY_BLAZE_SHOOT, 1f, 1f);
 
         } else if (pet instanceof Ghast) {
-            // Ghasts shoot large fireballs
             pet.launchProjectile(LargeFireball.class, direction.multiply(1.2));
             owner.getWorld().playSound(petLoc, Sound.ENTITY_GHAST_SHOOT, 1f, 1f);
 
         } else if (pet instanceof Wither) {
-            // Withers shoot skulls
             pet.launchProjectile(WitherSkull.class, direction.multiply(1.2));
             owner.getWorld().playSound(petLoc, Sound.ENTITY_WITHER_SHOOT, 1f, 1f);
 
         } else if (pet instanceof Snowman) {
-            // Snowmen shoot snowballs
             pet.launchProjectile(Snowball.class, direction.multiply(1.5));
             owner.getWorld().playSound(petLoc, Sound.ENTITY_SNOW_GOLEM_SHOOT, 1f, 1f);
 
         } else {
-            // --- MELEE ATTACK LOGIC (Cats, Dogs, Iron Golem, etc.) ---
-            // Teleport closer to hit
+            // 2. Melee Attackers (Default)
+            // Wither Skeletons will now trigger this block
+
+            // Teleport slightly in front of the target to "hit" them
             Location strikeLoc = target.getLocation().add(target.getLocation().getDirection().multiply(0.5));
             strikeLoc.setDirection(target.getLocation().toVector().subtract(strikeLoc.toVector()));
             pet.teleport(strikeLoc);
@@ -159,28 +201,30 @@ public class PetManager {
             pet.swingMainHand();
             owner.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 2f);
 
-            // Deal damage manually for melee pets
-            double dmg = (pet instanceof IronGolem) ? 10.0 : 5.0; // Iron Golems hit harder
+            // Calculate Damage
+            double dmg = 5.0; // Default damage
+            if (pet instanceof IronGolem) dmg = 10.0;
+            if (pet instanceof WitherSkeleton) dmg = 8.0; // Wither Skeletons hit harder
+            if (pet instanceof Warden) dmg = 15.0;
+
             target.damage(dmg, pet);
+
+            // Optional: Apply Wither Effect
+            if (pet instanceof WitherSkeleton) {
+                target.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.WITHER, 100, 1));
+            }
         }
     }
 
-    // --- SPAWNING LOGIC ---
     public void spawnPet(Player player, PetType type) {
         despawnPet(player);
-
         Entity entity = player.getWorld().spawnEntity(player.getLocation(), type.type);
 
         if (entity instanceof LivingEntity) {
             LivingEntity living = (LivingEntity) entity;
 
-            if (living.getAttribute(Attribute.SCALE) != null) {
-                living.getAttribute(Attribute.SCALE).setBaseValue(type.scale);
-            }
-
-            if (living.getAttribute(Attribute.MAX_HEALTH) != null) {
-                living.getAttribute(Attribute.MAX_HEALTH).setBaseValue(100.0);
-            }
+            if (living.getAttribute(Attribute.SCALE) != null) living.getAttribute(Attribute.SCALE).setBaseValue(type.scale);
+            if (living.getAttribute(Attribute.MAX_HEALTH) != null) living.getAttribute(Attribute.MAX_HEALTH).setBaseValue(100.0);
             living.setHealth(100.0);
             living.setInvulnerable(false);
             living.setAI(false);
@@ -188,20 +232,14 @@ public class PetManager {
             living.setCollidable(false);
 
             if (living instanceof Bat) ((Bat) living).setAwake(true);
-
             if (living instanceof Boss) {
                 BossBar bar = ((Boss) living).getBossBar();
-                if (bar != null) {
-                    bar.setVisible(false);
-                    bar.removeAll();
-                }
+                if (bar != null) { bar.setVisible(false); bar.removeAll(); }
             }
 
             applyVariants(living, type);
-
             activePets.put(player.getUniqueId(), entity);
             activePetTypes.put(player.getUniqueId(), type);
-
             updatePetNametag(living);
         }
         player.sendMessage(ChatColor.GREEN + "You summoned your " + type.display + "!");
@@ -245,18 +283,14 @@ public class PetManager {
         activePetTypes.remove(player.getUniqueId());
     }
 
-    // --- FOLLOW TASK ---
     private void startFollowTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
                 for (UUID uuid : activePets.keySet()) {
                     if (petAttackCooldowns.containsKey(uuid)) {
-                        if (System.currentTimeMillis() < petAttackCooldowns.get(uuid)) {
-                            continue;
-                        } else {
-                            petAttackCooldowns.remove(uuid);
-                        }
+                        if (System.currentTimeMillis() < petAttackCooldowns.get(uuid)) continue;
+                        else petAttackCooldowns.remove(uuid);
                     }
 
                     Player p = Bukkit.getPlayer(uuid);
@@ -273,7 +307,6 @@ public class PetManager {
                         if (!bat.isAwake()) bat.setAwake(true);
                     }
 
-                    // Creeper Scare
                     for (Entity nearby : pet.getNearbyEntities(5, 3, 5)) {
                         if (nearby instanceof Creeper) {
                             Creeper creeper = (Creeper) nearby;
@@ -361,9 +394,17 @@ public class PetManager {
             item.setItemMeta(meta);
             inv.addItem(item);
         }
+
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta cm = close.getItemMeta();
+        cm.setDisplayName(ChatColor.RED + "Close Shop");
+        close.setItemMeta(cm);
+        inv.setItem(49, close);
+
         p.openInventory(inv);
     }
 
+    // --- UPDATED OPEN SELECTOR ---
     public void openSelector(Player p) {
         Inventory inv = Bukkit.createInventory(null, 54, "My Pets");
         List<String> owned = config.getStringList(p.getUniqueId().toString());
@@ -374,29 +415,31 @@ public class PetManager {
                 ItemStack item = new ItemStack(pet.icon);
                 ItemMeta meta = item.getItemMeta();
                 meta.setDisplayName(ChatColor.GREEN + pet.display);
-                meta.setLore(Collections.singletonList(ChatColor.YELLOW + "Click to Summon"));
+
+                // Add Rename Lore here
+                List<String> lore = new ArrayList<>();
+                lore.add(ChatColor.YELLOW + "Left-Click to Summon");
+                lore.add(ChatColor.GOLD + "Right-Click to Rename");
+                meta.setLore(lore);
+
                 item.setItemMeta(meta);
                 inv.addItem(item);
             } catch (Exception ignored) {}
         }
 
-        ItemStack barrier = new ItemStack(Material.BARRIER);
-        ItemMeta bm = barrier.getItemMeta();
-        bm.setDisplayName(ChatColor.RED + "Despawn Current Pet");
-        barrier.setItemMeta(bm);
-        inv.setItem(53, barrier);
+        ItemStack despawn = new ItemStack(Material.TNT);
+        ItemMeta dm = despawn.getItemMeta();
+        dm.setDisplayName(ChatColor.RED + "Despawn Current Pet");
+        despawn.setItemMeta(dm);
+        inv.setItem(48, despawn);
+
+        ItemStack close = new ItemStack(Material.BARRIER);
+        ItemMeta cm = close.getItemMeta();
+        cm.setDisplayName(ChatColor.RED + "Close Menu");
+        close.setItemMeta(cm);
+        inv.setItem(49, close);
 
         p.openInventory(inv);
-    }
-
-    // NEW HELPER: Find the owner of a specific pet entity
-    public Player getPetOwner(Entity pet) {
-        for (Map.Entry<UUID, Entity> entry : activePets.entrySet()) {
-            if (entry.getValue().equals(pet)) {
-                return Bukkit.getPlayer(entry.getKey());
-            }
-        }
-        return null;
     }
 
     private void save() {

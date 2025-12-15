@@ -15,8 +15,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class StaffManagementListener implements Listener {
 
     private final PrisonVaults plugin;
-    // Store which player is being managed by whom
     private final Map<UUID, UUID> editorTarget = new HashMap<>();
     private final Map<UUID, String> chatInputMode = new HashMap<>();
 
@@ -44,6 +43,32 @@ public class StaffManagementListener implements Listener {
 
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
+        // --- NAVIGATION BUTTONS (Global) ---
+        if (clicked.getType() == Material.BARRIER && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Close")) {
+            player.closeInventory();
+            return;
+        }
+
+        if (clicked.getType() == Material.ARROW && ChatColor.stripColor(clicked.getItemMeta().getDisplayName()).contains("Back")) {
+            // Logic to determine where "Back" goes
+            if (title.startsWith("Manage")) {
+                // Back from List -> Main Menu
+                openStaffMainMenu(player); // FIXED: Opens menu directly
+            } else if (title.startsWith("Action")) {
+                // Back from Action -> List
+                UUID targetUUID = editorTarget.get(player.getUniqueId());
+                if (targetUUID != null) {
+                    OfflinePlayer t = Bukkit.getOfflinePlayer(targetUUID);
+                    RankManager.Rank r = plugin.rankManager.getRank(t);
+                    // If target is staff, go to staff list, else member list
+                    openPlayerList(player, r.weight >= 3, 1);
+                } else {
+                    openStaffMainMenu(player); // Fallback to main menu
+                }
+            }
+            return;
+        }
+
         // --- MAIN MENU ---
         if (title.equals(ChatColor.DARK_RED + "Staff Management")) {
             if (clicked.getType() == Material.GOLDEN_HELMET) {
@@ -53,11 +78,8 @@ public class StaffManagementListener implements Listener {
             }
         }
 
-        // --- PLAYER LISTS (Pagination) ---
+        // --- PLAYER LISTS ---
         else if (title.startsWith("Manage")) {
-            boolean isStaffList = title.contains("Staff");
-            int page = 1;
-
             if (clicked.getType() == Material.PLAYER_HEAD) {
                 SkullMeta meta = (SkullMeta) clicked.getItemMeta();
                 OfflinePlayer target = meta.getOwningPlayer();
@@ -87,7 +109,7 @@ public class StaffManagementListener implements Listener {
                         }
                         plugin.rankManager.setRank(target, newRank);
                         player.sendMessage(ChatColor.GREEN + "Promoted " + target.getName() + " to " + newRank.display);
-                        openActionMenu(player, target);
+                        openActionMenu(player, target); // Re-open to refresh
                     }
                 } else {
                     player.sendMessage(ChatColor.RED + "Cannot promote further.");
@@ -105,51 +127,46 @@ public class StaffManagementListener implements Listener {
                     RankManager.Rank newRank = RankManager.Rank.values()[nextOrd];
                     plugin.rankManager.setRank(target, newRank);
                     player.sendMessage(ChatColor.YELLOW + "Demoted " + target.getName() + " to " + newRank.display);
-                    openActionMenu(player, target);
+                    openActionMenu(player, target); // Re-open to refresh
                 }
             }
 
-            // 3. KICK (Protected)
+            // 3. KICK
             else if (clicked.getType() == Material.IRON_BOOTS) {
                 if (targetRank == RankManager.Rank.OWNER || targetRank == RankManager.Rank.CO_OWNER) {
-                    player.sendMessage(ChatColor.RED + "You cannot kick Owners or Co-Owners.");
-                    SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    player.sendMessage(ChatColor.RED + "Protected rank.");
                     return;
                 }
-
                 if (target.isOnline()) {
                     ((Player)target).kickPlayer(ChatColor.RED + "Kicked by Staff.");
                     player.sendMessage(ChatColor.GREEN + "Kicked " + target.getName());
                 } else {
                     player.sendMessage(ChatColor.RED + "Player is offline.");
                 }
+                // Keep GUI open
             }
 
-            // 4. BAN (Protected)
-            else if (clicked.getType() == Material.BARRIER) {
+            // 4. BAN
+            else if (clicked.getType() == Material.BARRIER && !clicked.getItemMeta().getDisplayName().contains("Close")) {
                 if (targetRank == RankManager.Rank.OWNER || targetRank == RankManager.Rank.CO_OWNER) {
-                    player.sendMessage(ChatColor.RED + "You cannot ban Owners or Co-Owners.");
-                    SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    player.sendMessage(ChatColor.RED + "Protected rank.");
                     return;
                 }
-
                 Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(target.getName(), "Banned by Operator", null, player.getName());
                 if (target.isOnline()) ((Player)target).kickPlayer(ChatColor.RED + "Banned!");
                 player.sendMessage(ChatColor.RED + "Banned " + target.getName());
+                // Keep GUI open
             }
 
-            // 5. WARN (Protected)
+            // 5. WARN (Must Close for Chat)
             else if (clicked.getType() == Material.PAPER) {
                 if (targetRank == RankManager.Rank.OWNER || targetRank == RankManager.Rank.CO_OWNER) {
-                    player.sendMessage(ChatColor.RED + "You cannot warn Owners or Co-Owners.");
-                    SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+                    player.sendMessage(ChatColor.RED + "Protected rank.");
                     return;
                 }
-
-                player.closeInventory();
+                player.closeInventory(); // CLOSE for input
                 chatInputMode.put(player.getUniqueId(), "WARN");
-                player.sendMessage(ChatColor.YELLOW + "Type warning details in chat: <Type> <Severity> <Reason>");
-                player.sendMessage(ChatColor.GRAY + "Example: Hacking High Using Xray");
+                player.sendMessage(ChatColor.YELLOW + "Type warning details in chat...");
             }
         }
     }
@@ -166,22 +183,33 @@ public class StaffManagementListener implements Listener {
         UUID targetUUID = editorTarget.get(player.getUniqueId());
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetUUID);
 
-        // Notify Staff
         player.sendMessage(ChatColor.GREEN + "Warned " + target.getName() + ": " + msg);
 
-        // Notify Target if online
         if (target.isOnline()) {
             ((Player)target).sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "WARNING: " + ChatColor.YELLOW + msg);
             SoundUtils.playSound((Player)target, Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1f);
         }
 
-        // Send Staff Mail
         plugin.staffMailManager.sendStaffMail(target, "WARNING", msg);
-
         chatInputMode.remove(player.getUniqueId());
+
+        // Optionally re-open GUI after chat? Usually better to leave them in chat to see confirmation.
     }
 
-    // --- HELPER: OPEN LIST ---
+    // --- NEW: OPEN MAIN MENU METHOD ---
+    public void openStaffMainMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_RED + "Staff Management");
+
+        inv.setItem(11, createItem(Material.GOLDEN_HELMET, ChatColor.GOLD + "Manage Staff", "View and edit Staff ranks"));
+        inv.setItem(15, createItem(Material.PLAYER_HEAD, ChatColor.GREEN + "Manage Members", "View and edit Member ranks"));
+
+        inv.setItem(26, createItem(Material.BARRIER, ChatColor.RED + "Close", "Close Menu"));
+
+        player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1f, 1f);
+    }
+
+    // --- UPDATED: PLAYER LIST WITH BACK/CLOSE ---
     private void openPlayerList(Player player, boolean staffOnly, int page) {
         String title = staffOnly ? "Manage Staff - Page " + page : "Manage Members - Page " + page;
         Inventory inv = Bukkit.createInventory(null, 54, title);
@@ -197,39 +225,38 @@ public class StaffManagementListener implements Listener {
         int index = 0;
         for (OfflinePlayer p : filtered) {
             if (index >= 45) break;
-
             ItemStack head = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta meta = (SkullMeta) head.getItemMeta();
             meta.setOwningPlayer(p);
             meta.setDisplayName(ChatColor.YELLOW + p.getName());
-
             RankManager.Rank r = plugin.rankManager.getRank(p);
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GRAY + "Rank: " + r.color + r.display);
-            lore.add(ChatColor.GRAY + "Status: " + (p.isOnline() ? ChatColor.GREEN + "Online" : ChatColor.RED + "Offline"));
-            lore.add(ChatColor.YELLOW + "Click to Manage");
-            meta.setLore(lore);
+            meta.setLore(Arrays.asList(ChatColor.GRAY + "Rank: " + r.color + r.display, ChatColor.YELLOW + "Click to Manage"));
             head.setItemMeta(meta);
-
             inv.addItem(head);
             index++;
         }
 
+        // Navigation
+        inv.setItem(45, createItem(Material.ARROW, ChatColor.RED + "Back", "Return to Main Menu"));
+        inv.setItem(49, createItem(Material.BARRIER, ChatColor.RED + "Close", "Close Menu"));
+
         player.openInventory(inv);
     }
 
-    // --- HELPER: OPEN ACTION MENU ---
+    // --- UPDATED: ACTION MENU WITH BACK/CLOSE ---
     private void openActionMenu(Player player, OfflinePlayer target) {
         Inventory inv = Bukkit.createInventory(null, 27, "Action: " + target.getName());
-
         RankManager.Rank r = plugin.rankManager.getRank(target);
 
-        // Items
         inv.setItem(10, createItem(Material.EMERALD, ChatColor.GREEN + "Promote", "Current: " + r.display));
         inv.setItem(11, createItem(Material.REDSTONE, ChatColor.RED + "Demote", "Current: " + r.display));
         inv.setItem(13, createItem(Material.PAPER, ChatColor.YELLOW + "Warn", "Issue a formal warning"));
         inv.setItem(15, createItem(Material.IRON_BOOTS, ChatColor.GOLD + "Kick", "Kick from server"));
         inv.setItem(16, createItem(Material.BARRIER, ChatColor.DARK_RED + "Ban", "Ban from server"));
+
+        // Navigation
+        inv.setItem(18, createItem(Material.ARROW, ChatColor.RED + "Back", "Return to List"));
+        inv.setItem(26, createItem(Material.BARRIER, ChatColor.RED + "Close", "Close Menu"));
 
         player.openInventory(inv);
     }

@@ -2,13 +2,15 @@ package me.theprisonbandit.prisonVaults.listeners;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.kits.Kit;
-import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemStack;
 
 public class KitShopListener implements Listener {
 
@@ -21,23 +23,24 @@ public class KitShopListener implements Listener {
     @EventHandler
     public void onShopClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(ChatColor.DARK_BLUE + "Kit Shop")) return;
-        event.setCancelled(true); // Stop taking items
+        event.setCancelled(true);
 
         if (event.getCurrentItem() == null || !event.getCurrentItem().hasItemMeta()) return;
-
+        ItemStack clicked = event.getCurrentItem();
         Player player = (Player) event.getWhoClicked();
+        String itemName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
 
-        // Get the name from the item (e.g., "God Kit")
-        String itemName = ChatColor.stripColor(event.getCurrentItem().getItemMeta().getDisplayName());
+        // --- NEW: CLOSE BUTTON LOGIC ---
+        // If you add a Barrier named "Close" to your Kit GUI, this will handle it.
+        if (clicked.getType() == Material.BARRIER && itemName.contains("Close")) {
+            player.closeInventory();
+            return;
+        }
 
         Kit targetKit = null;
         for (Kit kit : plugin.kitManager.getAllKits()) {
-            // 1. Check if the icon type matches (Pickaxe)
-            if (event.getCurrentItem().getType() == kit.getIcon().getType()) {
-
-                // 2. Check if the name matches "KitName Kit" exactly
+            if (clicked.getType() == kit.getIcon().getType()) {
                 String expectedName = kit.getName() + " Kit";
-
                 if (itemName.equals(expectedName)) {
                     targetKit = kit;
                     break;
@@ -47,22 +50,17 @@ public class KitShopListener implements Listener {
 
         if (targetKit == null) return;
 
-        // Money Logic
         double balance = plugin.getBalance(player);
         if (balance >= targetKit.getPrice()) {
             plugin.removeMoney(player, targetKit.getPrice());
             plugin.kitManager.giveKit(player, targetKit.getName());
 
             player.sendMessage(ChatColor.GREEN + "Purchased " + ChatColor.YELLOW + targetKit.getName() + " Kit" + ChatColor.GREEN + "!");
-
-            // NEW: Success Sound
             SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
 
-            player.closeInventory();
+            // CHANGED: Removed player.closeInventory() to keep shop open
         } else {
             player.sendMessage(ChatColor.RED + "You cannot afford this kit!");
-
-            // NEW: Fail Sound
             SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1, 1);
         }
     }

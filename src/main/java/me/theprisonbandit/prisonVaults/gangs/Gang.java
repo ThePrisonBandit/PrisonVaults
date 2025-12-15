@@ -13,6 +13,9 @@ public class Gang {
     private final Map<UUID, Rank> members = new HashMap<>();
     private final List<UUID> invitedPlayers = new ArrayList<>();
 
+    // NEW: Banned Players List
+    private final List<UUID> bannedPlayers = new ArrayList<>();
+
     public Gang(UUID id, String name, String tag, UUID owner) {
         this.id = id;
         this.name = name;
@@ -40,5 +43,22 @@ public class Gang {
 
     public String getFormattedName() {
         return ChatColor.translateAlternateColorCodes('&', color + "[" + tag + "] " + name);
+    }
+
+    // --- NEW: BAN METHODS ---
+    public List<UUID> getBannedPlayers() { return bannedPlayers; }
+
+    public boolean isBanned(UUID uuid) {
+        return bannedPlayers.contains(uuid);
+    }
+
+    public void addBan(UUID uuid) {
+        if (!bannedPlayers.contains(uuid)) {
+            bannedPlayers.add(uuid);
+        }
+    }
+
+    public void removeBan(UUID uuid) {
+        bannedPlayers.remove(uuid);
     }
 }

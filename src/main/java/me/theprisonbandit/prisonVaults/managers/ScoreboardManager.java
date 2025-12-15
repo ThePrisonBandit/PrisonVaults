@@ -2,12 +2,14 @@ package me.theprisonbandit.prisonVaults.managers;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.gangs.Gang;
+import me.theprisonbandit.prisonVaults.gangs.Rank; // Import Rank
 import me.theprisonbandit.prisonVaults.utils.GradientUtils;
 import me.theprisonbandit.prisonVaults.utils.NumberUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
 public class ScoreboardManager {
@@ -16,6 +18,28 @@ public class ScoreboardManager {
 
     public ScoreboardManager(PrisonVaults plugin) {
         this.plugin = plugin;
+    }
+
+    /**
+     * Call this in your onEnable()!
+     * This creates a loop that runs every 20 ticks (1 second).
+     * It advances the schedule and refreshes the board for all players.
+     */
+    public void startUpdater() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 1. Tell the ScheduleManager to check if time has passed
+                plugin.jobScheduleManager.checkTime();
+
+                // 2. Refresh the board for everyone
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (isScoreboardVisible(player)) {
+                        updateScoreboard(player);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L); // Runs every 1 second
     }
 
     public void setScoreboardVisible(Player player, boolean visible) {
@@ -64,6 +88,7 @@ public class ScoreboardManager {
         Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
         String gangDisplay = ChatColor.GRAY + "No Gang";
         String gangDesc = "";
+        String gangRankDisplay = ""; // NEW: Variable for rank
 
         if (gang != null) {
             String colorCode = gang.getColor();
@@ -75,6 +100,12 @@ public class ScoreboardManager {
             gangDesc = gang.getDescription();
             if (gangDesc.length() > 16) {
                 gangDesc = gangDesc.substring(0, 16) + "..";
+            }
+
+            // NEW: Get the player's rank in the gang
+            Rank r = gang.getMembers().get(player.getUniqueId());
+            if (r != null) {
+                gangRankDisplay = r.display;
             }
         }
 
@@ -89,6 +120,9 @@ public class ScoreboardManager {
             jobXp = plugin.jobManager.getXp(player);
             jobTitle = plugin.jobManager.getPromotionTitle(currentJob, jobLevel);
         }
+
+        // Schedule / Day Info
+        String scheduleInfo = plugin.jobScheduleManager.getScoreboardString();
 
         // --- 2. BUILD LINES (Max 15) ---
         int score = 15;
@@ -106,37 +140,37 @@ public class ScoreboardManager {
         createLine(board, obj, "   &7Rank: &f" + plugin.getPlayerRank(player), score--);
 
         // JOB SECTION
+        createLine(board, obj, "&b&l JOB INFO", score--);
         if (!currentJob.equals("None")) {
-            createLine(board, obj, "&b&l JOB INFO", score--);
             createLine(board, obj, "   &7Title: &f" + jobTitle, score--);
-            // Combined Level and XP
             createLine(board, obj, "   &7Lvl: &f" + jobLevel + " &7(" + (int)jobXp + "/100)", score--);
-
-            String day = plugin.jobScheduleManager.getCurrentDayName();
-            String status = plugin.jobScheduleManager.isWorkDay() ? "&a(Open)" : "&c(Closed)";
-            createLine(board, obj, "   &7Day: &e" + day + " " + status, score--);
-
         } else {
-            createLine(board, obj, "&b&l JOB INFO", score--);
             createLine(board, obj, "   &7Status: &8Unemployed", score--);
         }
+
+        // Display the Day/Schedule
+        createLine(board, obj, "   &7Day: &e" + scheduleInfo, score--);
 
         // GANG SECTION
         createLine(board, obj, "&d&l GANG", score--);
         createDynamicLine(board, obj, "gangEntry", "   ", gangDisplay, score--);
+
+        // NEW: Show Gang Rank
+        if (gang != null && !gangRankDisplay.isEmpty()) {
+            createLine(board, obj, "   &7Rank: &f" + gangRankDisplay, score--);
+        }
 
         // Show Description if in a gang
         if (gang != null && !gangDesc.isEmpty()) {
             createLine(board, obj, "   &7Desc: &f" + gangDesc, score--);
         }
 
-        // STATS SECTION (Combined to save space)
+        // STATS SECTION
         createLine(board, obj, "&a&l STATISTICS", score--);
         double bal = plugin.getBalance(player);
-        // Format: Balance | Vaults
         createLine(board, obj, "   &2$&a" + NumberUtils.format(bal) + " &7| &fVaults: " + plugin.getMaxVaults(player), score--);
 
-        // Bottom Separator (Only add if we have space, score > 0)
+        // Bottom Separator
         if (score > 0) {
             createLine(board, obj, "&8&m---------------------", score);
         }
@@ -145,9 +179,8 @@ public class ScoreboardManager {
     }
 
     private void createLine(Scoreboard board, Objective obj, String text, int scoreNum) {
-        if (scoreNum < 1) return; // Prevent crash if over 15 lines
+        if (scoreNum < 1) return;
         String colored = ChatColor.translateAlternateColorCodes('&', text);
-        // Ensure uniqueness
         while (board.getEntries().contains(colored)) {
             colored += ChatColor.RESET;
         }
@@ -167,6 +200,7 @@ public class ScoreboardManager {
     }
 
     public void updateScoreboard(Player player) {
+        plugin.jobScheduleManager.checkTime();
         setScoreboard(player);
     }
 

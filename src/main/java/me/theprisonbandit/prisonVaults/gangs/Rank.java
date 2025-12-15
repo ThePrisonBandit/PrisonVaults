@@ -1,10 +1,13 @@
 package me.theprisonbandit.prisonVaults.gangs;
 
 public enum Rank {
-    LEADER(4, "Leader"),
-    CO_LEADER(3, "Co-Leader"),
-    ELITE(2, "Elite"),
-    THUG(1, "Thug"),
+    LEADER(7, "Leader"),
+    CO_LEADER(6, "Co-Leader"),
+    ELITE(5, "Elite"),
+    SHOT_CALLER(4, "Shot-Caller"),
+    THUG(3, "Thug"),
+    BRUTE(2, "Brute"),
+    HUSTLER(1, "Hustler"),
     MEMBER(0, "Member");
 
     public final int weight;

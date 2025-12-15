@@ -24,6 +24,7 @@ public enum PetType {
     PARROT_CYAN("Cyan Parrot", EntityType.PARROT, 15000, 1.0, Material.FEATHER, "CYAN", true),
     PARROT_GRAY("Gray Parrot", EntityType.PARROT, 15000, 1.0, Material.FEATHER, "GRAY", true),
     BAT("Bat", EntityType.BAT, 15000, 1.0, Material.COAL, null, true),
+    AXOLOTL("Axolotl", EntityType.AXOLOTL, 15000, 1.0, Material.AXOLOTL_BUCKET, null, false), // NEW
 
     // --- FOXES ($20,000) ---
     FOX_RED("Red Fox", EntityType.FOX, 20000, 0.7, Material.SWEET_BERRIES, "RED", false),
@@ -33,7 +34,7 @@ public enum PetType {
     LIL_PANDA("Lil Panda", EntityType.PANDA, 50000, 0.4, Material.BAMBOO, null, false),
     LIL_PIG("Lil Pig", EntityType.PIG, 50000, 0.5, Material.PORKCHOP, null, false),
     LIL_HORSE("Lil Horse", EntityType.HORSE, 50000, 0.4, Material.SADDLE, null, false),
-    LIL_SNOWMAN("Lil Snowman", EntityType.SNOW_GOLEM, 50000, 0.4, Material.CARVED_PUMPKIN, null, false), // NEW
+    LIL_SNOWMAN("Lil Snowman", EntityType.SNOW_GOLEM, 50000, 0.4, Material.CARVED_PUMPKIN, null, false),
 
     // --- LEGENDARY ($250,000) ---
     LIL_SKELETON("Lil Skeleton", EntityType.SKELETON, 250000, 0.5, Material.BONE, null, false),
@@ -42,11 +43,12 @@ public enum PetType {
     LIL_WITHER_SKELETON("Lil Wither Skeleton", EntityType.WITHER_SKELETON, 250000, 0.5, Material.WITHER_SKELETON_SKULL, null, false),
     LIL_BLAZE("Lil Blaze", EntityType.BLAZE, 250000, 0.4, Material.BLAZE_ROD, null, true),
     LIL_GHAST("Lil Ghast", EntityType.GHAST, 300000, 0.1, Material.GHAST_TEAR, null, true),
+    LIL_HAPPY_GHAST("Lil Happy Ghast", EntityType.GHAST, 350000, 0.1, Material.GHAST_TEAR, null, true), // NEW
 
     // --- MYTHICAL ($1,000,000+) ---
     LIL_WARDEN("Lil Warden", EntityType.WARDEN, 2000000, 0.35, Material.SCULK_SENSOR, null, false),
     LIL_WITHER("Lil Wither Boss", EntityType.WITHER, 1000000, 0.2, Material.NETHER_STAR, null, true),
-    LIL_IRON_GOLEM("Lil Iron Golem", EntityType.IRON_GOLEM, 1000000, 0.4, Material.IRON_BLOCK, null, false); // NEW
+    LIL_IRON_GOLEM("Lil Iron Golem", EntityType.IRON_GOLEM, 1000000, 0.4, Material.IRON_BLOCK, null, false);
 
     public final String display;
     public final EntityType type;

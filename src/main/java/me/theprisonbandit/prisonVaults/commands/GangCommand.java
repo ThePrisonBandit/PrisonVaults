@@ -128,7 +128,7 @@ public class GangCommand implements CommandExecutor {
             if (gang == null) return error(player, "No gang.");
             if (gang.getMembers().get(player.getUniqueId()) != Rank.LEADER) return error(player, "Leader only.");
 
-            openManagerGUI(player, gang);
+            plugin.gangManager.openMainGangMenu(player);
             // GUI Open sound
             SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
             return true;

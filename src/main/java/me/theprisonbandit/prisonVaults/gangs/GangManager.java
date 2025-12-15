@@ -1,12 +1,18 @@
 package me.theprisonbandit.prisonVaults.gangs;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,7 +34,37 @@ public class GangManager {
         loadGangs();
     }
 
-    // --- METHODS FOR MAIL COMMANDS ---
+    // --- CENTRALIZED MENU OPENER ---
+    public void openMainGangMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_GRAY + "Gang Manager");
+
+        inv.setItem(10, createItem(Material.NAME_TAG, ChatColor.GREEN + "Rename Gang", "Change your gang's name"));
+        inv.setItem(11, createItem(Material.OAK_SIGN, ChatColor.GOLD + "Edit Tag", "Change your gang's tag"));
+        inv.setItem(12, createItem(Material.PAPER, ChatColor.YELLOW + "Edit Description", "Change gang description"));
+        inv.setItem(14, createItem(Material.RED_DYE, ChatColor.LIGHT_PURPLE + "Gang Color", "Change gang name color"));
+        inv.setItem(16, createItem(Material.PLAYER_HEAD, ChatColor.AQUA + "Members", "Manage gang members"));
+
+        // NEW: Ban Management Button (Iron Bars)
+        inv.setItem(8, createItem(Material.IRON_BARS, ChatColor.DARK_RED + "Banned Players", "Manage gang bans"));
+
+        inv.setItem(22, createItem(Material.TNT, ChatColor.RED + "Disband Gang", "Delete the gang forever"));
+        inv.setItem(26, createItem(Material.BARRIER, ChatColor.RED + "Close", "Close Menu"));
+
+        player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+    }
+
+    private ItemStack createItem(Material mat, String name, String lore) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(name);
+        if (lore != null) {
+            meta.setLore(Collections.singletonList(ChatColor.GRAY + lore));
+        }
+        item.setItemMeta(meta);
+        return item;
+    }
+
     public boolean gangExists(String name) {
         return getGangByName(name) != null;
     }
@@ -36,7 +72,6 @@ public class GangManager {
     public Gang getGang(String name) {
         return getGangByName(name);
     }
-    // -------------------------------
 
     public void kickMember(Gang gang, UUID memberId) {
         gang.getMembers().remove(memberId);
@@ -50,6 +85,13 @@ public class GangManager {
     }
 
     public void invitePlayer(Gang gang, Player target) {
+        // NEW: Check if banned
+        if (gang.isBanned(target.getUniqueId())) {
+            Player owner = Bukkit.getPlayer(gang.getOwner());
+            if (owner != null) owner.sendMessage(ChatColor.RED + "That player is banned from your gang!");
+            return;
+        }
+
         pendingInvites.computeIfAbsent(target.getUniqueId(), k -> new HashSet<>()).add(gang.getName());
         target.sendMessage(ChatColor.DARK_GRAY + "--------------------------------");
         target.sendMessage(ChatColor.GREEN + "Invited to join " + ChatColor.GOLD + gang.getName());
@@ -63,6 +105,12 @@ public class GangManager {
     }
 
     public void joinGang(Player player, Gang gang) {
+        // NEW: Double check ban
+        if (gang.isBanned(player.getUniqueId())) {
+            player.sendMessage(ChatColor.RED + "You are banned from this gang.");
+            return;
+        }
+
         if (pendingInvites.containsKey(player.getUniqueId())) {
             pendingInvites.get(player.getUniqueId()).remove(gang.getName());
         }
@@ -119,11 +167,20 @@ public class GangManager {
             gangsConfig.set(path + ".desc", gang.getDescription());
             gangsConfig.set(path + ".color", gang.getColor());
             gangsConfig.set(path + ".owner", gang.getOwner().toString());
+
+            // Save Members
             List<String> memberList = new ArrayList<>();
             for (Map.Entry<UUID, Rank> entry : gang.getMembers().entrySet()) {
                 memberList.add(entry.getKey() + ":" + entry.getValue().name());
             }
             gangsConfig.set(path + ".members", memberList);
+
+            // NEW: Save Bans
+            List<String> bannedList = new ArrayList<>();
+            for (UUID uuid : gang.getBannedPlayers()) {
+                bannedList.add(uuid.toString());
+            }
+            gangsConfig.set(path + ".banned", bannedList);
         }
         try { gangsConfig.save(gangsFile); } catch (IOException e) {}
     }
@@ -141,6 +198,8 @@ public class GangManager {
                 Gang gang = new Gang(id, sec.getString("name"), sec.getString("tag"), UUID.fromString(sec.getString("owner")));
                 gang.setDescription(sec.getString("desc"));
                 gang.setColor(sec.getString("color"));
+
+                // Load Members
                 for (String entry : sec.getStringList("members")) {
                     String[] parts = entry.split(":");
                     if (parts.length >= 2) {
@@ -149,6 +208,14 @@ public class GangManager {
                         playerGangCache.put(mid, gang);
                     }
                 }
+
+                // NEW: Load Bans
+                if (sec.contains("banned")) {
+                    for (String s : sec.getStringList("banned")) {
+                        gang.addBan(UUID.fromString(s));
+                    }
+                }
+
                 gangsById.put(id, gang);
             } catch (Exception e) {}
         }

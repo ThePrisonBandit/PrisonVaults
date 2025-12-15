@@ -89,12 +89,14 @@ public class HelpCommand implements CommandExecutor {
 
         // --- ADMIN / MISC ---
         addCmd("/prisonvaults reload", "Reload the plugin configuration");
-        addCmd("/pvconfig set <rob|pickpocket> <decimal>", "Open the prisonvaults config file and edit it");
+        addCmd("/pvconfig set <rob|pickpocket> <decimal> | /pvconfig setworld <name>", "Open the prisonvaults config file and edit it");
         addCmd("/pvscoreboard <show|hide>", "Toggle the prisonvaults scoreboard");
         addCmd("/pvhelp [page]", "List all plugin commands");
         addCmd("/pvcompass", "Get a compass to find your way.");
         addCmd("/pvinfo", "View plugin information");
         addCmd("/pvperm <group|user> ...", "Manage permissions (OP Only)");
+        addCmd("/pvannounce <message>", "Make a server-wide announcement (OP Only)");
+        addCmd("/resetcooldown", "Reset the server cooldowns (OP Only)");
 
         // --- STAFF MANAGEMENT ---
         addCmd("/staff", "Open the Staff Management GUI");

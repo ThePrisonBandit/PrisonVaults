@@ -22,6 +22,9 @@ public class KitManager {
 
     private final PrisonVaults plugin;
     private final Map<String, Kit> kits = new HashMap<>();
+    // NEW: Cooldown Tracking Map <PlayerUUID, Map<KitName, CooldownEndTimeMillis>>
+    private final Map<UUID, Map<String, Long>> kitCooldowns = new HashMap<>();
+
     private File kitsFile;
     private FileConfiguration kitsConfig;
 
@@ -30,7 +33,25 @@ public class KitManager {
         loadKits();
     }
 
-    // --- MAIN LOGIC ---
+    // --- NEW: COOLDOWN LOGIC ---
+    public void resetAllCooldowns() {
+        kitCooldowns.clear();
+    }
+
+    // Note: Call this in giveKit if you want to enforce cooldowns
+    public boolean isOnCooldown(Player player, String kitName) {
+        if (!kitCooldowns.containsKey(player.getUniqueId())) return false;
+        Map<String, Long> pCooldowns = kitCooldowns.get(player.getUniqueId());
+        if (!pCooldowns.containsKey(kitName.toLowerCase())) return false;
+
+        return System.currentTimeMillis() < pCooldowns.get(kitName.toLowerCase());
+    }
+
+    public void setCooldown(Player player, String kitName, long cooldownSeconds) {
+        kitCooldowns.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
+                .put(kitName.toLowerCase(), System.currentTimeMillis() + (cooldownSeconds * 1000));
+    }
+    // ---------------------------
 
     public void giveKit(Player player, String kitName) {
         Kit kit = kits.get(kitName.toLowerCase());
@@ -38,6 +59,15 @@ public class KitManager {
             player.sendMessage(ChatColor.RED + "Kit doesn't exist.");
             return;
         }
+
+        // Example Cooldown Check (Optional - you can enable this)
+        /*
+        if (isOnCooldown(player, kitName) && !player.hasPermission("prisonvaults.bypass.cooldown")) {
+             player.sendMessage(ChatColor.RED + "You must wait before using this kit again.");
+             return;
+        }
+        setCooldown(player, kitName, 3600); // 1 Hour default
+        */
 
         // List to hold items that need to go into the inventory (not equipped)
         List<ItemStack> itemsToGive = new ArrayList<>();

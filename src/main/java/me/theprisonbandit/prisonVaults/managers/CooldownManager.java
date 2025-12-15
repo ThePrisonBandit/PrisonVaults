@@ -14,7 +14,8 @@ import java.util.UUID;
 public class CooldownManager {
 
     private final PrisonVaults plugin;
-    private final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
+    // Changed access modifier slightly or kept private but added getter/clearer
+    public final Map<UUID, Map<String, Long>> cooldowns = new HashMap<>();
     private final File file;
     private FileConfiguration config;
 
@@ -34,6 +35,21 @@ public class CooldownManager {
         // Load data immediately on startup
         loadCooldowns();
     }
+
+    // --- NEW: RESET METHOD ---
+    public void resetAllCooldowns() {
+        this.cooldowns.clear();
+        // Clear the file config as well
+        for (String key : config.getKeys(false)) {
+            config.set(key, null);
+        }
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    // -------------------------
 
     /**
      * Set a cooldown for a specific player and command key.

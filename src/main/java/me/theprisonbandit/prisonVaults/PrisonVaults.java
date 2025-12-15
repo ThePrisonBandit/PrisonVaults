@@ -7,8 +7,8 @@ import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.*;
 import me.theprisonbandit.prisonVaults.pets.PetAttackListener;
-import me.theprisonbandit.prisonVaults.pets.PetListener; // NEW
-import me.theprisonbandit.prisonVaults.pets.PetManager;   // NEW
+import me.theprisonbandit.prisonVaults.pets.PetListener;
+import me.theprisonbandit.prisonVaults.pets.PetManager;
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
 import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
@@ -44,31 +44,31 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public final Map<String, Double> rankLadder = new LinkedHashMap<>();
 
     // Managers
+    public JobScheduleManager jobScheduleManager;
     public ScoreboardManager scoreboardManager;
     public KitManager kitManager;
     public GangManager gangManager;
     public MailManager mailManager;
     public CooldownManager cooldownManager;
     public JobManager jobManager;
-    public JobScheduleManager jobScheduleManager;
 
-    // NEW: Staff Managers
+    // Staff Managers
     public RankManager rankManager;
     public StaffMailManager staffMailManager;
 
-    // NEW: Permission Manager
+    // Permission Manager
     public PermissionManager permissionManager;
 
-    // NEW: Compass Manager
+    // Compass Manager
     public CompassManager compassManager;
 
-    // NEW: Update Checker
+    // Update Checker
     public UpdateChecker updateChecker;
 
-    // NEW: Chat Channel Manager
+    // Chat Channel Manager
     public ChatChannelManager chatChannelManager;
 
-    // NEW: Pet Manager
+    // Pet Manager
     public PetManager petManager;
 
     @Override
@@ -79,13 +79,15 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         saveDefaultConfig();
 
         // 2. Initialize Managers
+        this.jobScheduleManager = new JobScheduleManager(this);
+
         this.scoreboardManager = new ScoreboardManager(this);
+        this.scoreboardManager.startUpdater();
         this.kitManager = new KitManager(this);
         this.gangManager = new GangManager(this);
         this.mailManager = new MailManager(this);
         this.cooldownManager = new CooldownManager(this);
         this.jobManager = new JobManager(this);
-        this.jobScheduleManager = new JobScheduleManager(this);
 
         // Staff Managers
         this.rankManager = new RankManager(this);
@@ -103,7 +105,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // Chat Channel Manager
         this.chatChannelManager = new ChatChannelManager(this);
 
-        // NEW: Pet Manager
+        // Pet Manager
         this.petManager = new PetManager(this);
 
         // 3. Register Commands
@@ -123,6 +125,9 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("kits").setExecutor(new KitCommand(this));
         this.getCommand("createkit").setExecutor(new CreateKitCommand(this));
         this.getCommand("buykit").setExecutor(new BuyKitCommand(this));
+
+        // NEW: Reset Cooldown Command
+        this.getCommand("resetcooldown").setExecutor(new ResetCooldownCommand(this));
 
         // Gangs & Mail
         this.getCommand("gang").setExecutor(new GangCommand(this));
@@ -173,10 +178,13 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("staffchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.STAFF));
         this.getCommand("gangchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.GANG));
 
-        // NEW: Pet Commands
+        // Pet Commands
         PetCommand petCmd = new PetCommand(this);
         this.getCommand("pets").setExecutor(petCmd);
         this.getCommand("petshop").setExecutor(petCmd);
+
+        // Announcement Command
+        this.getCommand("pvannounce").setExecutor(new AnnounceCommand(this));
 
         // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
@@ -185,7 +193,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new GangListener(this), this);
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new ProfileListener(), this);
+        this.getServer().getPluginManager().registerEvents(new ProfileListener(this), this);
 
         // Register Staff & Ability Listeners
         this.getServer().getPluginManager().registerEvents(new StaffManagementListener(this), this);
@@ -199,21 +207,21 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.updateChecker = new UpdateChecker(this);
         this.getServer().getPluginManager().registerEvents(this.updateChecker, this);
 
-        // NEW: Pet Listener
+        // Pet Listener
         this.getServer().getPluginManager().registerEvents(new PetListener(this), this);
 
-        // NEW: Pet Attack Listener
+        // Pet Attack Listener
         this.getServer().getPluginManager().registerEvents(new PetAttackListener(this), this);
 
         // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
-        getLogger().info("PrisonVaults (Full Core + Staff + Kits + Jobs + Gangs + Schedules + Animated Gradients + Economy PVP + Server Moderation Tools + Pets) enabled successfully!");
+        getLogger().info("PrisonVaults enabled successfully!");
     }
 
     @Override
     public void onDisable() {
-        // NEW: Cleanup Pets
+        // Cleanup Pets
         if (petManager != null) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 petManager.despawnPet(p);
@@ -396,5 +404,9 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         ranksConfig = YamlConfiguration.loadConfiguration(ranksFile);
         rankLadder.clear();
         for (String k : ranksConfig.getKeys(false)) rankLadder.put(k, ranksConfig.getDouble(k));
+    }
+
+    public JobScheduleManager getJobScheduleManager() {
+        return jobScheduleManager;
     }
 }

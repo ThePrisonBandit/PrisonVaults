@@ -29,7 +29,7 @@ public class JobManager {
     public static final String TITLE_COOKING_SHOP = ChatColor.DARK_GREEN + "Mess Hall Shop";
     public static final String TITLE_SMITHY_SHOP = ChatColor.DARK_GRAY + "The Forge Shop";
 
-    // --- MATERIAL SETS (Public for Listener Access) ---
+    // --- MATERIAL SETS ---
     public static final Set<Material> RAW_FOODS = EnumSet.of(
             Material.BEEF, Material.PORKCHOP, Material.CHICKEN,
             Material.COD, Material.SALMON, Material.MUSHROOM_STEW,
@@ -134,6 +134,12 @@ public class JobManager {
 
     // --- GUI MANAGEMENT ---
     public void openShop(Player player, String type, int page) {
+        // [UPDATE] Check Schedule: Block shop access if closed
+        if (!plugin.getJobScheduleManager().isJobOpen()) {
+            plugin.getJobScheduleManager().sendClosedMessage(player);
+            return;
+        }
+
         List<ItemStack> stock = type.equalsIgnoreCase("cooking") ? cookingStock : smithingStock;
         String title = type.equalsIgnoreCase("cooking") ? TITLE_COOKING_SHOP : TITLE_SMITHY_SHOP;
 
@@ -230,6 +236,12 @@ public class JobManager {
     public String getJob(Player player) { return getJob((OfflinePlayer) player); }
 
     public void joinJob(Player player, String jobName) {
+        // [UPDATE] Check Schedule: Block joining if closed
+        if (!plugin.getJobScheduleManager().isJobOpen()) {
+            plugin.getJobScheduleManager().sendClosedMessage(player);
+            return;
+        }
+
         String formattedName = jobName.substring(0, 1).toUpperCase() + jobName.substring(1).toLowerCase();
         File f = plugin.getPlayerDataFile(player.getUniqueId());
         FileConfiguration data = YamlConfiguration.loadConfiguration(f);

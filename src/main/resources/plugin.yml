@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.0.10'
+version: '1.1.0'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -146,6 +146,14 @@ commands:
   petshop:
     description: Open the pet shop
     usage: /petshop
+  resetcooldown:
+    description: Reset all cooldowns for the server
+    usage: /resetcooldown
+    permission: prisonvaults.staff.manage
+  pvannounce:
+    description: Broadcast a message to the server
+    usage: /pvannounce <message>
+    permission: prisonvaults.admin.announce
 
 permissions:
   # --- BASIC PERMISSIONS (Default: True) ---
@@ -235,6 +243,14 @@ permissions:
     default: false
   prisonvaults.staffchat: # Used by the command now
     default: false
+  prisonvaults.resetcooldown:
+    default: false
+  prisonvaults.admin.announce:
+    description: Allows broadcasting server-wide announcements
+    default: false
+  prisonvaults.pvannounce:
+    description: Allows broadcasting server-wide announcements
+    default: false
 
   # --- RANK HIERARCHIES ---
 
@@ -265,6 +281,9 @@ permissions:
       prisonvaults.staff.manage: true
       prisonvaults.reload: true
       prisonvaults.pvconfig: true
+      prisonvaults.resetcooldown: true
+      prisonvaults.admin.announce: true
+      prisonvaults.pvannounce: true
 
   prisonvaults.coowner:
     description: Co-Owner permissions (Inherits Admin + Money + SetStaff)

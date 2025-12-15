@@ -14,7 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.CraftItemEvent;
-import org.bukkit.event.inventory.FurnaceExtractEvent; // NEW: Reliable Smelting Event
+import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -26,7 +26,7 @@ public class JobListener implements Listener {
 
     private final PrisonVaults plugin;
 
-    // Workstation Definitions (Keep local or move to Manager if preferred)
+    // Workstation Definitions
     private final Set<Material> COOKING_STATIONS = EnumSet.of(
             Material.FURNACE, Material.SMOKER, Material.CAMPFIRE, Material.SOUL_CAMPFIRE
     );
@@ -75,7 +75,6 @@ public class JobListener implements Listener {
         String job = plugin.jobManager.getJob(player);
         Material type = result.getType();
 
-        // Handle Shift-Click Crafting (Rough estimation: 1 action reward per click)
         // Cooking
         if (job.equalsIgnoreCase("Cooking") && JobManager.COOKING_CRAFTS.contains(type)) {
             performWork(player, "job_craft_action", 8.0, 10.0, Sound.ENTITY_VILLAGER_WORK_FARMER);
@@ -86,7 +85,7 @@ public class JobListener implements Listener {
         }
     }
 
-    // --- C. SMELTING QUEST (Furnace Extraction - FIXED) ---
+    // --- C. SMELTING QUEST (Furnace Extraction) ---
     @EventHandler
     public void onFurnaceExtract(FurnaceExtractEvent event) {
         Player player = event.getPlayer();
@@ -94,14 +93,17 @@ public class JobListener implements Listener {
         Material type = event.getItemType();
         int amount = event.getItemAmount();
 
+        // CHECK SCHEDULE: If jobs are closed, do not reward money/XP for smelting
+        if (!canWork(player)) {
+            return;
+        }
+
         // 1. Cooking Smelting (Cooked Food)
         if (job.equalsIgnoreCase("Cooking") && isCookedFood(type)) {
-            // Reward: $2 and 5 XP per item
             plugin.jobManager.addQuestProgress(player, type, amount, 2.0, 5.0);
         }
         // 2. Blacksmith Smelting (Ingots)
         else if (job.equalsIgnoreCase("Blacksmith") && isSmithingProduct(type)) {
-            // Reward: $5 and 10 XP per item
             plugin.jobManager.addQuestProgress(player, type, amount, 5.0, 10.0);
         }
     }
@@ -120,17 +122,31 @@ public class JobListener implements Listener {
                 mat == Material.COPPER_INGOT || mat == Material.NETHERITE_SCRAP;
     }
 
-    // --- HELPER: GENERIC WORK REWARD ---
-    private void performWork(Player player, String cdKey, double money, double xp, Sound sound) {
-        if (plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cdKey)) return;
-        if (!plugin.jobScheduleManager.isWorkDay()) {
-            if (!plugin.cooldownManager.isOnCooldown(player.getUniqueId(), "weekend_msg")) {
-                plugin.jobScheduleManager.sendWeekendMessage(player);
-                plugin.cooldownManager.setCooldown(player.getUniqueId(), "weekend_msg", 5);
-            }
-            return;
+    // --- HELPER: CHECK SCHEDULE ---
+    // Returns true if player can work. If false, sends message (with cooldown).
+    private boolean canWork(Player player) {
+        // Use the new isJobOpen() check which covers both Weekends AND Night time
+        if (plugin.getJobScheduleManager().isJobOpen()) {
+            return true;
         }
 
+        // Prevent chat spam using a cooldown
+        if (!plugin.cooldownManager.isOnCooldown(player.getUniqueId(), "job_closed_msg")) {
+            plugin.jobScheduleManager.sendClosedMessage(player);
+            plugin.cooldownManager.setCooldown(player.getUniqueId(), "job_closed_msg", 5);
+        }
+        return false;
+    }
+
+    // --- HELPER: GENERIC WORK REWARD ---
+    private void performWork(Player player, String cdKey, double money, double xp, Sound sound) {
+        // 1. Check Cooldown
+        if (plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cdKey)) return;
+
+        // 2. Check Schedule (Now includes Night/Day check)
+        if (!canWork(player)) return;
+
+        // 3. Reward
         plugin.cooldownManager.setCooldown(player.getUniqueId(), cdKey, 2);
         plugin.addMoney(player, money);
         plugin.jobManager.addXp(player, xp);
@@ -172,6 +188,10 @@ public class JobListener implements Listener {
         // 2. Selling (Global Market)
         if (event.getClickedInventory() != event.getView().getTopInventory()) {
             if (isAdminMessHall || isAdminSmithy) return;
+
+            // OPTIONAL: Do you want to block SELLING items when the job center is closed?
+            // If so, uncomment the line below:
+            // if (!canWork(player)) return;
 
             String shopType = isGlobalCooking ? "cooking" : "smithing";
             String job = plugin.jobManager.getJob(player);
