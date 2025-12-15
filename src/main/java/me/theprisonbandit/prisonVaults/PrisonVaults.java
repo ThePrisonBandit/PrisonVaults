@@ -62,9 +62,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     // Compass Manager
     public CompassManager compassManager;
 
-    // Update Checker
-    public UpdateChecker updateChecker;
-
     // Chat Channel Manager
     public ChatChannelManager chatChannelManager;
 
@@ -99,9 +96,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // Compass Manager
         this.compassManager = new CompassManager(this);
 
-        // Update Checker
-        this.updateChecker = new UpdateChecker(this);
-
         // Chat Channel Manager
         this.chatChannelManager = new ChatChannelManager(this);
 
@@ -126,7 +120,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("createkit").setExecutor(new CreateKitCommand(this));
         this.getCommand("buykit").setExecutor(new BuyKitCommand(this));
 
-        // NEW: Reset Cooldown Command
+        // Reset Cooldown Command
         this.getCommand("resetcooldown").setExecutor(new ResetCooldownCommand(this));
 
         // Gangs & Mail
@@ -203,15 +197,14 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         // Register Permission Manager Listener
         this.getServer().getPluginManager().registerEvents(new PermissionListener(this), this);
 
-        // Update Checker
-        this.updateChecker = new UpdateChecker(this);
-        this.getServer().getPluginManager().registerEvents(this.updateChecker, this);
-
         // Pet Listener
         this.getServer().getPluginManager().registerEvents(new PetListener(this), this);
 
         // Pet Attack Listener
         this.getServer().getPluginManager().registerEvents(new PetAttackListener(this), this);
+
+        // Donation Listener
+        this.getServer().getPluginManager().registerEvents(new DonationListener(this), this);
 
         // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);

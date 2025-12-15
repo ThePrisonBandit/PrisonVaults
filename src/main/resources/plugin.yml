@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.1.0'
+version: '1.1.1'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: !
@@ -149,7 +149,7 @@ commands:
   resetcooldown:
     description: Reset all cooldowns for the server
     usage: /resetcooldown
-    permission: prisonvaults.staff.manage
+    permission: prisonvaults.resetcooldown
   pvannounce:
     description: Broadcast a message to the server
     usage: /pvannounce <message>

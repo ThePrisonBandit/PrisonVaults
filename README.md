@@ -134,7 +134,7 @@ PrisonVaults is highly configurable!
 
 pets.yml: Stores player pet ownership data.
 
-config.yml: Configure CurseForge API key for updates.
+config.yml: Configure plugin data.
 
 permissions.yml: Defines groups and permissions.
 

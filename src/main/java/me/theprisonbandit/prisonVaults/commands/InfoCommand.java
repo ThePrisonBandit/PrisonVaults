@@ -24,12 +24,6 @@ public class InfoCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.GRAY + "Authors: " + ChatColor.YELLOW + String.join(", ", pdf.getAuthors()));
         sender.sendMessage(ChatColor.GRAY + "Description: " + ChatColor.WHITE + pdf.getDescription());
         sender.sendMessage(ChatColor.GRAY + "Status: " + ChatColor.GREEN + "Active (1.21)");
-
-        // Show update status if available
-        if (plugin.updateChecker != null) { // We will add public access to this field in main class
-            sender.sendMessage(ChatColor.GRAY + "Update Checker: " + ChatColor.GREEN + "Active");
-        }
-
         sender.sendMessage(ChatColor.DARK_GRAY + "---------------------------------------------------");
         return true;
     }
