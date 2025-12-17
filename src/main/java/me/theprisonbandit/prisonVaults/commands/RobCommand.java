@@ -8,18 +8,20 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added
 import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class RobCommand implements CommandExecutor {
+public class RobCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
-
-    // Settings
-    // Note: Success Chance is now in config.yml (rob.success-chance)
     private static final double MIN_ROB = 100.0;
     private static final double MAX_ROB = 50000.0;
-    private static final long COOLDOWN_SECONDS = 7200; // 2 Hours
+    private static final long COOLDOWN_SECONDS = 7200;
 
     public RobCommand(PrisonVaults plugin) {
         this.plugin = plugin;
@@ -57,24 +59,16 @@ public class RobCommand implements CommandExecutor {
         }
 
         plugin.cooldownManager.setCooldown(robber.getUniqueId(), "rob", COOLDOWN_SECONDS);
-
-        // --- NEW: CONFIGURABLE CHANCE ---
-        // Defaults to 0.05 (5%) if not found in config
         double successChance = plugin.getConfig().getDouble("rob.success-chance", 0.05);
 
-        // FAILED ATTEMPT
         if (Math.random() > successChance) {
             robber.sendMessage(ChatColor.RED + "§lROB FAILED! §cYou were caught!");
             victim.sendMessage(ChatColor.YELLOW + "§lALERT! §e" + robber.getName() + " tried to rob you but failed!");
-
-            // Robber hears failure
             SoundUtils.playSound(robber, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-            // Victim hears alarm
             SoundUtils.playSound(victim, Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 1.5f);
             return true;
         }
 
-        // SUCCESSFUL ROB LOGIC
         double victimBalance = plugin.getBalance(victim);
         if (victimBalance < MIN_ROB) {
             robber.sendMessage(ChatColor.RED + "Target is too poor.");
@@ -96,9 +90,7 @@ public class RobCommand implements CommandExecutor {
         robber.sendMessage(ChatColor.GREEN + "§lROBBERY SUCCESSFUL! §aStole §2$" + formattedAmount);
         victim.sendMessage(ChatColor.RED + "§lYOU WERE ROBBED! §cLost §4$" + formattedAmount);
 
-        // Robber hears Money Sound
         SoundUtils.playSound(robber, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-        // Victim hears Alarm
         SoundUtils.playSound(victim, Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 0.5f);
 
         return true;
@@ -108,5 +100,19 @@ public class RobCommand implements CommandExecutor {
         long h = seconds / 3600;
         long m = (seconds % 3600) / 60;
         return h + "h " + m + "m " + (seconds % 60) + "s";
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> validTargets = new ArrayList<>();
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (!p.getName().equals(sender.getName())) { // Don't rob yourself
+                    validTargets.add(p.getName());
+                }
+            }
+            return validTargets;
+        }
+        return Collections.emptyList();
     }
 }

@@ -220,4 +220,35 @@ public class GangManager {
             } catch (Exception e) {}
         }
     }
+
+    // --- LEAVE GANG LOGIC ---
+    public void leaveGang(Player player, Gang gang) {
+        // 1. Remove from Gang Data
+        gang.getMembers().remove(player.getUniqueId());
+        playerGangCache.remove(player.getUniqueId());
+
+        // 2. Wipe Player Data (Remove gang association from their profile if stored there)
+        FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
+        data.set("gang", null);
+        try {
+            data.save(plugin.getPlayerDataFile(player.getUniqueId()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 3. Notify the Player
+        player.sendMessage(ChatColor.YELLOW + "You left " + gang.getColor() + gang.getName() + ChatColor.YELLOW + "~!");
+        SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+
+        // 4. Notify the Leader (if online)
+        Player leader = Bukkit.getPlayer(gang.getOwner());
+        if (leader != null && leader.isOnline()) {
+            leader.sendMessage(ChatColor.RED + "Notification: " + ChatColor.WHITE + player.getName() +
+                    ChatColor.RED + " left the " + gang.getColor() + gang.getName() + ChatColor.RED + "~!");
+            SoundUtils.playSound(leader, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+        }
+
+        // 5. Save Changes
+        saveGangs();
+    }
 }

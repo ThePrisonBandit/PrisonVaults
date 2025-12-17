@@ -127,6 +127,14 @@ public class PermissionManager {
         }
     }
 
+    public void deleteGroup(String group) {
+        if (config.contains("groups." + group)) {
+            config.set("groups." + group, null);
+            save();
+            refreshAll(); // Reload perms for everyone in case they were in this group
+        }
+    }
+
     public Set<String> getGroups() {
         if (config.getConfigurationSection("groups") == null) return new HashSet<>();
         return config.getConfigurationSection("groups").getKeys(false);

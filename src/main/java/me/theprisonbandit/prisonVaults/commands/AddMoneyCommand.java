@@ -9,12 +9,18 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil; // Added
 
-public class AddMoneyCommand implements CommandExecutor {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class AddMoneyCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
-    // 999 Decillion = 9.99 x 10^35
     private static final double MAX_BALANCE = 9.99E35;
 
     public AddMoneyCommand(PrisonVaults plugin) {
@@ -49,9 +55,7 @@ public class AddMoneyCommand implements CommandExecutor {
             return true;
         }
 
-        // --- CAP LOGIC ---
         double currentBal = plugin.getBalance(target);
-
         if (currentBal >= MAX_BALANCE) {
             sender.sendMessage(ChatColor.RED + target.getName() + " is already at the MAX balance (999 Decillion)!");
             SoundUtils.playSound((Player) sender, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
@@ -62,7 +66,6 @@ public class AddMoneyCommand implements CommandExecutor {
             amount = MAX_BALANCE - currentBal;
             sender.sendMessage(ChatColor.YELLOW + "(!) Amount capped to reach the limit of 999 Decillion.");
         }
-        // -----------------
 
         plugin.addMoney(target, amount);
         plugin.scoreboardManager.updateScoreboard(target);
@@ -77,5 +80,17 @@ public class AddMoneyCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!sender.hasPermission("prisonvaults.admin")) return Collections.emptyList();
+
+        if (args.length == 1) {
+            return null; // Return null to let Bukkit suggest online player names
+        } else if (args.length == 2) {
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("1000", "10000", "100000", "1000000", "1000000000", "1000000000000", "1000000000000000", "1000000000000000000"), new ArrayList<>());
+        }
+        return Collections.emptyList();
     }
 }

@@ -6,11 +6,13 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added
 import org.bukkit.entity.Player;
 
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-public class ChannelCommand implements CommandExecutor {
+public class ChannelCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
     private final ChatChannelManager.Channel targetChannel;
@@ -46,5 +48,11 @@ public class ChannelCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    // --- NEW: Return empty list to stop player name autocompletion while typing messages ---
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        return Collections.emptyList();
     }
 }

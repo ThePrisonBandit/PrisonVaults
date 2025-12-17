@@ -1,11 +1,12 @@
 name: PrisonVaults
-version: '1.1.1'
+version: '1.1.2'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
-prefix: !
+prefix: '!'
 load: STARTUP
 authors: [ ThePrisonBandit ]
 description: Vaults for minecraft prisons!
+
 commands:
   pv:
     description: Open a personal vault
@@ -57,13 +58,13 @@ commands:
     usage: /prisonvaults reload
   pay:
     description: Send money to others
-    usage: /pay <player> <amount>]
+    usage: /pay <player> <amount>
   rob:
     description: Attempt to rob a player (Very low chance!)
     usage: /rob <player>
   job:
     description: Join or quit jobs
-    usage: /job <join|quit|shop|info|promote>
+    usage: /job <join|quit|info|promote>
   myprofile:
     description: View your stats
     usage: /myprofile
@@ -85,11 +86,11 @@ commands:
     usage: /pvscoreboard
   pvshop:
     description: Open the job ingredient shops.
-    usage: /pvshop <messhall|smithy>
+    usage: /pvshop <buy|sell> <messhall|smithy>
     aliases: [ jobshop ]
   pvhelp:
     description: List all plugin commands.
-    usage: /pvhelp [page]
+    usage: /pvhelp <page>
   staff:
     description: Open the Staff Management GUI
     usage: /staff
@@ -118,12 +119,10 @@ commands:
     description: Unban a player
     usage: /pvpardon <player>
     permission: prisonvaults.pardon
-  # NEW PERM COMMAND
   pvperm:
     description: Manage PrisonVaults permissions
     usage: /pvperm <args>
     permission: prisonvaults.op
-  # NEW COMPASS COMMAND
   pvcompass:
     description: Open the prisonvaults compass GUI
     usage: /pvcompass
@@ -133,12 +132,12 @@ commands:
     permission: prisonvaults.info
   staffchat:
     description: Toggle staff chat or send message
-    usage: /sc [msg]
+    usage: /sc <msg>
     aliases: [ sc ]
-    permission: prisonvaults.staffchat # FIXED: Matched to specific permission node
+    permission: prisonvaults.staffchat
   gangchat:
     description: Toggle gang chat or send message
-    usage: /gc [msg]
+    usage: /gc <msg>
     aliases: [ gc ]
   pets:
     description: Open your pet selector
@@ -241,14 +240,11 @@ permissions:
   prisonvaults.setstaff:
     description: Allows setting staff ranks
     default: false
-  prisonvaults.staffchat: # Used by the command now
+  prisonvaults.staffchat:
     default: false
   prisonvaults.resetcooldown:
     default: false
   prisonvaults.admin.announce:
-    description: Allows broadcasting server-wide announcements
-    default: false
-  prisonvaults.pvannounce:
     description: Allows broadcasting server-wide announcements
     default: false
 
@@ -283,7 +279,6 @@ permissions:
       prisonvaults.pvconfig: true
       prisonvaults.resetcooldown: true
       prisonvaults.admin.announce: true
-      prisonvaults.pvannounce: true
 
   prisonvaults.coowner:
     description: Co-Owner permissions (Inherits Admin + Money + SetStaff)

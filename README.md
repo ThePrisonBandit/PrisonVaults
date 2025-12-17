@@ -5,141 +5,188 @@ PrisonVaults is the complete ecosystem designed to power modern Prison servers. 
 
 Stop cluttering your server with 20 different plugins. Get the all-in-one solution that just works.
 
-🔥 Key Features
-⚔️ Advanced Gang System (UPDATED!)
+🔥 New in v1.1.2
+Smart Tab Completion: Every command now features intelligent autocompletion. Arguments like players, kit names, gang names, shop types, and configuration settings now autofill instantly.
+
+Pet AI Overhaul:
+
+Hostile Pet Logic: Boss pets (Wither, Warden) and aggressive pets (Blaze, Skeleton) no longer target their owners. They use advanced vector-based movement to follow safely.
+
+Safe Mode: Wither pets no longer destroy blocks with explosions, and Fireball pets (Ghast/Blaze) no longer create fire blocks (grief prevention).
+
+Bee Upgrade: Bee pets now have infinite stingers—they do not die after attacking.
+
+Axolotl Boost: Axolotls now move faster on land.
+
+Targeting System: Added a PvE/PvP Toggle for pets. In PvE mode, pets will ignore players and only attack monsters.
+
+New Pet: Added the Lil Phantom (Replaced Lil Happy Ghast).
+
+XP Action Bar: Pet XP gains are now displayed cleanly in the action bar instead of spamming chat.
+
+⚔️ Advanced Gang System
 The most social feature of your server just got smarter.
 
 GUI Management: Manage members, colors, and settings via a polished GUI.
 
-Banishment Control (NEW): Gang leaders can now ban players from their gang via the GUI ("Iron Bars" icon), preventing them from ever rejoining or being invited until unbanned.
+Banishment Control: Gang leaders can ban players from their gang via the GUI ("Iron Bars" icon).
 
-Smart Notifications: Members are now instantly notified via chat when they are promoted, demoted, or kicked.
+Smart Notifications: Members are notified via chat upon promotion, demotion, or kicks.
 
-Safe Disband: Disbanding a gang now requires confirmation and automatically alerts all online members that the gang has been dissolved.
+Safe Disband: Disbanding requires confirmation and alerts all online members.
 
-Deep Hierarchy: Progression through 7 distinct ranks: Member -> Hustler -> Brute -> Thug -> Shot Caller -> Elite -> Co-Leader.
-
-Rank Visibility: Your Gang Rank is now proudly displayed on the Scoreboard, your Profile, and via /whois.
+Deep Hierarchy: 7 Ranks: Member -> Hustler -> Brute -> Thug -> Shot Caller -> Elite -> Co-Leader.
 
 🐾 Pets Companion System
 Pets are no longer just cosmetic—they are fully functional combat companions using Minecraft 1.21's scaling technology.
 
-Smart Combat AI: Pets protect you! They automatically attack monsters in PvE and defend you against players in PvP.
+RPG Mechanics: Pets have HP, levels, and gain XP on kills (displayed in Action Bar).
 
-RPG Mechanics: Pets have 100 HP (displayed in nametags) and auto-respawn after 10 seconds.
+Tactical Modes: Toggle between PvP (Aggressive) and PvE (Passive) modes via the GUI.
 
-Tactical Modes: Includes Assist Mode (attacks who you strike) and Defense Mode (attacks who hits you).
+"Lil" Mobs: Collect combat-ready tiny monsters like the Lil Warden, Lil Wither, Lil Phantom, and Lil Blaze.
 
-"Lil" Mobs: Collect combat-ready tiny monsters like the Lil Warden, Lil Wither, and Lil Blaze.
+Custom AI: Pets like Bees and Wither Skeletons have custom attack logic tailored to assist the player without causing friendly fire.
 
-🧭 System, Visuals & Quality of Life
-Scoreboard: Flicker-free sidebar showing Gang Rank, Balance, Job Title, and Staff status.
+📦 Infinite Storage Vaults & Economy
+Rank-Based Limits: Players unlock more vaults as they rank up (Rank A = 1 Vault ... Rank Z = 104 Vaults).
 
-Global Announcements: Staff can use /pvannounce to broadcast important messages with a distinct sound notification.
+Dynamic Autocomplete: /pv only suggests vault numbers you have actually unlocked.
 
-Overhead Compass HUD: Toggle a sleek, scrolling compass bar with /pvcompass.
+Economy: Full support for decimals, massive numbers (Decillions), and transaction logging.
 
-Hex/Gradient Support: Player names shine with RGB Gradients.
+🛡️ Staff & Permissions
+Zero Dependencies: You don't need LuckPerms. PrisonVaults handles groups and permissions natively.
 
-🛡️ Staff Management & Punishments
-Manage your team and keep your server safe directly from within the game.
+Punishment Suite: Built-in Kick, Ban, Warn, and Pardon logic with history tracking.
 
-Punishment Suite: Built-in commands for Kick, Ban, Warn, and Pardon.
+Rank Safety: Owners/Co-Owners cannot be punished by lower staff.
 
-Rank Safety: Owners and Co-Owners are protected—they cannot be kicked/banned by lower staff.
+🛠️ Commands & Arguments
+👤 Player Essentials
+/pv <number> - Open a specific personal vault (Autofills allowed numbers).
 
-Staff GUI: Operators can use /staff to open a sleek GUI to manage the team.
-
-🔐 Built-In Permissions System
-No external plugins required. PrisonVaults includes its own lightweight, powerful permission manager.
-
-Zero Dependencies: You don't need LuckPerms to run your server.
-
-Easy Management: Create groups, add permissions, and assign users with /pvperm.
-
-📦 Infinite Storage Vaults
-Rank-Based Limits: Players unlock more vaults as they /rankup.
-
-Massive Capacity: Support for up to 100+ Vaults per player.
-
-Easy Access: Accessed via /pv <number> or a GUI menu.
-
-💼 Jobs & Progression System
-Interactive Jobs: Join jobs like Cooking via /job join.
-
-Career Ladder: Earn promotions from Cook -> Chef -> Head Chef.
-
-🛠️ Commands & Permissions
-Player Commands
-/pv <number> - Open a specific vault.
-
-/rankup - Advance to the next prison rank.
+/sell or /sell <all|hand> - Sell items to the server.
 
 /balance - Check your current wallet.
 
-/pay <player> <amount> - Send money to others.
+/pay <player> <amount> - Send money to another player.
 
-/mail <player|gang|staff> <msg> - Send mail.
+/rankup - Advance to the next prison rank.
 
-/inbox - Check your personal mail.
+/rob <player> - Attempt to rob a player (Subject to cooldown & chance).
 
-/colorify <preset> - Change your name color/gradient style.
+/colorify <style> - Set a gradient name color (e.g., Rainbow, Sunset).
 
-/pvcompass - Toggle the overhead HUD compass.
+/pvcompass - Toggle the navigation BossBar compass.
 
-/pvinfo - View plugin version and update status.
+/pvhelp [page] - View the help menu.
 
-/rob <player> - Attempt to rob a player.
+/pvinfo - View plugin version information.
 
-/whois <player> - View another player's profile and Gang Rank.
+🩸 Gangs
+/gang create <Tag> <Name> - Create a new gang.
 
-Pet, Gang & Job Commands
-/pets - Open your pet collection.
+/gang invite <player> - Invite a player to your gang.
 
-/petshop - Open the pet shop to buy new companions.
+/gang join <GangName> - Accept an invite.
 
-/gang create <name> <tag> - Start a new gang.
+/gang leave - Leave your current gang.
 
-/gang invite <player> - Invite a user.
+/gang info - View gang stats and leader.
 
-/gang manager - Open the Gang GUI (includes Ban Manager).
+/gang manage - Open the Gang Management GUI (Leaders only).
 
-/gangchat <msg> - Toggle or send gang chat.
+/gangs - List all gangs on the server.
 
-/job join <job> - Join a job.
+/gangchat <message> - Send a message to gang members.
 
-/myprofile - View your personal stats card and Gang Rank.
+💼 Jobs & Shops
+/job join <Cooking|Blacksmith> - Join a specific job.
 
-Staff & Admin Commands
-/staff - (OP) Open the Staff Management GUI.
+/job quit - Quit your current job.
 
-/pvannounce <message> - (Admin) Broadcast a server-wide alert with sound.
+/job info - View your job level and XP.
 
-/resetcooldown - (Admin) Instantly reset ALL cooldowns (Kits, Robbery, Jobs) for EVERY player.
+/pvshop <buy|sell> <messhall|smithy> [page] - Open specific job shops.
 
-/setstaff <player> <rank> - (OP) Set a player's staff rank.
+🐾 Pets
+/pets - Open your pet collection GUI (Summon/Despawn/Rename).
 
-/pvperm <group|user> ... - (OP) Manage permissions.
+/petshop - Open the shop to buy new pets.
 
-/staffchat <msg> - (Staff) Toggle or send staff chat.
+⚔️ Kits
+/kit <name> - Equip a kit.
 
-/pvkick, /pvwarn, /pvban, /pvpardon - Punishment commands.
+/kits - List all available kits.
 
-/staffmail read - (Staff) Read global staff announcements.
+/buykit - Open the Kit Shop GUI.
 
-/createkit - (Admin) Create a procedural kit.
+👤 Profile
+/myprofile - View your stats card (K/D, Balance, Rank).
 
-⚙️ Configuration
-PrisonVaults is highly configurable!
+/whois <player> - View another player's profile.
 
-pets.yml: Stores player pet ownership data.
+/setbio <text> - Set your profile biography.
 
-config.yml: Configure plugin data.
+🛡️ Staff & Admin (OP/Permission Required)
+Management:
 
-permissions.yml: Defines groups and permissions.
+/staff - Open the Staff Management GUI.
 
-kits.yml: Full control over kit contents and abilities.
+/setstaff <player> <rank> - Set a player's staff role (Helper -> Owner).
 
-gangs.yml: Keeps track of all gangs and ban lists.
+/staffchat <message> - Talk in the private staff channel.
 
-ranks.yml: Define your rank ladder and costs.
+/staffmail <read|clear> - View staff notifications.
+
+/pvannounce <message> - Broadcast a server-wide alert with sound.
+
+/resetcooldown - Reset all cooldowns for all players.
+
+Punishments:
+
+/pvkick <player> [reason]
+
+/pvban <player> [reason]
+
+/pvwarn <player> <reason>
+
+/pvpardon <player>
+
+Permissions:
+
+/pvperm group <name> <create|delete|add|remove> [permission]
+
+/pvperm user <player> <setgroup|reset> [group]
+
+Configuration & Economy:
+
+/addmoney <player> <amount> - Admin command to inject money.
+
+/createkit <Name> <Color> <ToolMat> <ArmorMat> <EnchantLvl> <Price> - Create a procedural kit in-game.
+
+/pvconfig set <rob|pickpocket> <0.0-1.0> - Edit success chances.
+
+/pvconfig setworld <worldName> - Set the active world for Job scheduling.
+
+/pvscoreboard <show|hide> - Toggle the scoreboard overlay.
+
+/prisonvaults reload - Reload all configuration files.
+
+⚙️ Configuration Files
+config.yml: Main settings, chances, and world definitions.
+
+pets.yml: Player pet data and leveling stats.
+
+permissions.yml: Custom group and permission definitions.
+
+kits.yml: Kit contents, cooldowns, and ability definitions.
+
+gangs.yml: Gang data, members, and ban lists.
+
+ranks.yml: Rank ladder prices and display names.
+
+prices.yml: Item sell prices for /sell.
+
+Ready to revolutionize your Prison Server? Download PrisonVaults today!

@@ -6,16 +6,22 @@ import net.md_5.bungee.api.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added Import
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil; // Added Import
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
-public class ColorifyCommand implements CommandExecutor {
+// Added "implements TabCompleter"
+public class ColorifyCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
 
@@ -64,7 +70,6 @@ public class ColorifyCommand implements CommandExecutor {
         }
 
         // 1. SAVE THE SELECTION TO CONFIG
-        // This is crucial for the scoreboard to remember it!
         savePlayerGradient(player, selectedStyle.name());
 
         // 2. APPLY IMMEDIATELY (Visuals)
@@ -93,5 +98,18 @@ public class ColorifyCommand implements CommandExecutor {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // --- NEW: TAB COMPLETION ---
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> styles = new ArrayList<>();
+            for (GradientStyle style : GradientStyle.values()) {
+                styles.add(style.name().toLowerCase());
+            }
+            return StringUtil.copyPartialMatches(args[0], styles, new ArrayList<>());
+        }
+        return Collections.emptyList();
     }
 }

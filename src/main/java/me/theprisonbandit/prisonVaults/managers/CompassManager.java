@@ -16,99 +16,81 @@ import java.util.UUID;
 public class CompassManager {
 
     private final PrisonVaults plugin;
-    private final Map<UUID, BossBar> activeBars = new HashMap<>();
-
-    // The visual strip. We repeat it 3 times to make the "scrolling" window logic easier.
-    // N = North, E = East, S = South, W = West
-    private static final String COMPASS_STRIP = "N  |  NE  |  E  |  SE  |  S  |  SW  |  W  |  NW  |  N  |  NE  |  E  |  SE  |  S  |  SW  |  W  |  NW  |  N  |  NE  |  E  |  SE  |  S";
+    private final Map<UUID, BossBar> compassBars = new HashMap<>();
+    private final String COMPASS_STR = "N  .  .  .  NE .  .  .  E  .  .  .  SE .  .  .  S  .  .  .  SW .  .  .  W  .  .  .  NW .  .  .  ";
 
     public CompassManager(PrisonVaults plugin) {
         this.plugin = plugin;
-        startTask();
+        startCompassTask();
     }
 
     public void toggleCompass(Player player) {
-        if (activeBars.containsKey(player.getUniqueId())) {
-            removeCompass(player);
-            player.sendMessage(ChatColor.YELLOW + "Compass disabled.");
+        if (compassBars.containsKey(player.getUniqueId())) {
+            // Disable
+            BossBar bar = compassBars.remove(player.getUniqueId());
+            bar.removeAll();
+            player.sendMessage(ChatColor.YELLOW + "Compass HUD: " + ChatColor.RED + "OFF");
         } else {
-            createCompass(player);
-            player.sendMessage(ChatColor.GREEN + "Compass enabled.");
+            // Enable
+            BossBar bar = Bukkit.createBossBar("Compass", BarColor.BLUE, BarStyle.SOLID);
+            bar.addPlayer(player);
+            bar.setVisible(true);
+            compassBars.put(player.getUniqueId(), bar);
+            player.sendMessage(ChatColor.YELLOW + "Compass HUD: " + ChatColor.GREEN + "ON");
         }
     }
 
-    public void createCompass(Player player) {
-        if (activeBars.containsKey(player.getUniqueId())) return;
-
-        // Create a Blue BossBar with no progress (just text)
-        BossBar bar = Bukkit.createBossBar("", BarColor.BLUE, BarStyle.SOLID);
-        bar.setProgress(0.0); // Empty bar so it looks like just UI text
-        bar.addPlayer(player);
-        activeBars.put(player.getUniqueId(), bar);
-    }
-
+    // Removes a specific player's compass (used on quit/toggle)
     public void removeCompass(Player player) {
-        if (activeBars.containsKey(player.getUniqueId())) {
-            activeBars.get(player.getUniqueId()).removePlayer(player);
-            activeBars.remove(player.getUniqueId());
+        if (compassBars.containsKey(player.getUniqueId())) {
+            compassBars.get(player.getUniqueId()).removeAll();
+            compassBars.remove(player.getUniqueId());
         }
     }
 
+    // --- NEW METHOD: Removes ALL compasses (used on server disable) ---
     public void removeAll() {
-        for (BossBar bar : activeBars.values()) {
+        for (BossBar bar : compassBars.values()) {
             bar.removeAll();
         }
-        activeBars.clear();
+        compassBars.clear();
     }
 
-    private void startTask() {
+    private void startCompassTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
-                for (UUID uuid : activeBars.keySet()) {
-                    Player p = Bukkit.getPlayer(uuid);
-                    if (p != null && p.isOnline()) {
-                        updateBar(p, activeBars.get(uuid));
+                for (Map.Entry<UUID, BossBar> entry : compassBars.entrySet()) {
+                    Player p = Bukkit.getPlayer(entry.getKey());
+                    if (p == null || !p.isOnline()) {
+                        continue;
                     }
+                    updateBar(entry.getValue(), p);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L); // Updates every 2 ticks (smooth enough)
+        }.runTaskTimer(plugin, 2L, 2L); // Update every 0.1 seconds (smooth)
     }
 
-    private void updateBar(Player p, BossBar bar) {
+    private void updateBar(BossBar bar, Player p) {
         float yaw = p.getLocation().getYaw();
         // Normalize yaw to 0-360
         yaw = (yaw % 360 + 360) % 360;
 
-        // The strip represents 360 degrees.
-        // We want to show a "window" of text.
-        // Let's map 0-360 to an index in our string.
+        // The compass string represents 360 degrees.
+        // We repeat the string 3 times to handle the "wrapping" easily.
+        String fullScroll = COMPASS_STR + COMPASS_STR + COMPASS_STR;
 
-        // Total "Cycle" length in characters roughly representing 360 degrees
-        // Our pattern "N  |  NE  |  E..." has a specific repeating length.
-        // Each segment "N  |  " is roughly 6 chars. 8 directions * 6 = 48 chars per 360 deg.
+        // Calculate index based on yaw (ratio of string length)
+        int totalLen = COMPASS_STR.length();
+        int index = (int) ((yaw / 360.0) * totalLen);
 
-        int totalWindowSize = 48;
+        // Add offset to center the display (approx half the view width)
+        int viewWidth = 12; // Characters visible at once
+        int start = totalLen + index - (viewWidth / 2);
 
-        // Calculate start index based on yaw
-        int index = (int) ((yaw / 360.0) * totalWindowSize);
+        String visible = fullScroll.substring(start, start + viewWidth);
 
-        // Shift index to center the strip (because our strip is tripled)
-        // We start deeper in the string so we don't go out of bounds
-        int offset = 48; // Skip the first full rotation worth of chars
-
-        int start = index + offset - 10; // -10 to show characters "behind" the center
-        int end = index + offset + 10;   // +10 to show characters "ahead"
-
-        if (start < 0) start = 0;
-        if (end > COMPASS_STRIP.length()) end = COMPASS_STRIP.length();
-
-        String visibleText = COMPASS_STRIP.substring(start, end);
-
-        // Highlight the center character (The direction you are facing)
-        // This is tricky with plain text, so we just display the strip.
-        // We add a little marker in the title to show "Center"
-
-        bar.setTitle(ChatColor.GRAY + "[" + ChatColor.AQUA + visibleText + ChatColor.GRAY + "]");
+        bar.setTitle(ChatColor.DARK_GRAY + "[" + ChatColor.AQUA + visible + ChatColor.DARK_GRAY + "]");
+        bar.setProgress(1.0);
     }
 }

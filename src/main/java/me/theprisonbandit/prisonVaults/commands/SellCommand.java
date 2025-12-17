@@ -2,17 +2,24 @@ package me.theprisonbandit.prisonVaults.commands;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
 import me.theprisonbandit.prisonVaults.utils.NumberUtils;
-import me.theprisonbandit.prisonVaults.utils.SoundUtils; // Import
+import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.StringUtil; // Added
 
-public class SellCommand implements CommandExecutor {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class SellCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
 
@@ -83,5 +90,13 @@ public class SellCommand implements CommandExecutor {
             player.sendMessage(ChatColor.RED + "No sellable items.");
             SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            return StringUtil.copyPartialMatches(args[0], Arrays.asList("all", "hand"), new ArrayList<>());
+        }
+        return Collections.emptyList();
     }
 }

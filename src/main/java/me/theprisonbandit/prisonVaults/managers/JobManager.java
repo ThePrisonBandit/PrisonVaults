@@ -35,6 +35,12 @@ public class JobManager {
             Material.COD, Material.SALMON, Material.MUSHROOM_STEW,
             Material.RABBIT, Material.POTATO, Material.KELP, Material.MUTTON
     );
+    // NEW: Cooked Foods (So you can sell the result of your job!)
+    public static final Set<Material> COOKED_FOODS = EnumSet.of(
+            Material.COOKED_BEEF, Material.COOKED_PORKCHOP, Material.COOKED_CHICKEN,
+            Material.COOKED_COD, Material.COOKED_SALMON, Material.COOKED_MUTTON,
+            Material.COOKED_RABBIT, Material.BAKED_POTATO, Material.DRIED_KELP
+    );
     public static final Set<Material> COOKING_CRAFTS = EnumSet.of(
             Material.BREAD, Material.CAKE, Material.COOKIE,
             Material.PUMPKIN_PIE, Material.GOLDEN_CARROT,
@@ -64,6 +70,9 @@ public class JobManager {
     public JobManager(PrisonVaults plugin) {
         this.plugin = plugin;
         this.shopFile = new File(plugin.getDataFolder(), "shops.yml");
+        if (!shopFile.exists()) {
+            try { shopFile.createNewFile(); } catch (IOException e) { e.printStackTrace(); }
+        }
         loadPrices();
         loadShops();
     }
@@ -82,16 +91,26 @@ public class JobManager {
     // --- INITIALIZATION ---
     private void loadPrices() {
         itemPrices.clear();
+        // Raw Food
         for (Material mat : RAW_FOODS) itemPrices.put(mat, 10.0);
+        // Cooked Food
+        for (Material mat : COOKED_FOODS) itemPrices.put(mat, 20.0);
+        // Crafts
         for (Material mat : COOKING_CRAFTS) itemPrices.put(mat, 25.0);
+
+        // Specific Overrides
         itemPrices.put(Material.CAKE, 100.0);
         itemPrices.put(Material.PUMPKIN_PIE, 40.0);
         itemPrices.put(Material.GOLDEN_CARROT, 50.0);
         itemPrices.put(Material.RABBIT_STEW, 30.0);
         itemPrices.put(Material.SUGAR, 5.0);
 
+        // Smithing Materials
         for (Material mat : SMITHING_MATERIALS) itemPrices.put(mat, 15.0);
+        // Smithing Crafts
         for (Material mat : SMITHING_CRAFTS) itemPrices.put(mat, 100.0);
+
+        // Specific Overrides
         itemPrices.put(Material.COAL, 5.0);
         itemPrices.put(Material.CHARCOAL, 5.0);
         itemPrices.put(Material.FLINT, 5.0);
@@ -133,8 +152,31 @@ public class JobManager {
     }
 
     // --- GUI MANAGEMENT ---
+
+    // OPEN SELL GUI (Restock)
+    public void openSellGui(Player player, String jobName) {
+        if (!plugin.getJobScheduleManager().isJobOpen()) {
+            plugin.getJobScheduleManager().sendClosedMessage(player);
+            return;
+        }
+
+        String title = "";
+        if (jobName.equalsIgnoreCase("Cooking")) {
+            title = ChatColor.DARK_GREEN + "Restock: Mess Hall";
+        } else if (jobName.equalsIgnoreCase("Blacksmith")) {
+            title = ChatColor.DARK_GRAY + "Restock: Smithy";
+        } else {
+            return;
+        }
+
+        Inventory inv = Bukkit.createInventory(null, 36, title);
+        player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
+        player.sendMessage(ChatColor.GRAY + "Put items in this inventory to add them to the public shop.");
+    }
+
+    // OPEN BUY GUI (Shop)
     public void openShop(Player player, String type, int page) {
-        // [UPDATE] Check Schedule: Block shop access if closed
         if (!plugin.getJobScheduleManager().isJobOpen()) {
             plugin.getJobScheduleManager().sendClosedMessage(player);
             return;
@@ -208,8 +250,13 @@ public class JobManager {
     // --- HELPER METHODS ---
     public boolean isAllowedInShop(String type, Material mat) {
         if (!itemPrices.containsKey(mat)) return false;
-        if (type.equalsIgnoreCase("cooking")) return RAW_FOODS.contains(mat) || COOKING_CRAFTS.contains(mat);
-        else if (type.equalsIgnoreCase("smithing")) return SMITHING_MATERIALS.contains(mat) || SMITHING_CRAFTS.contains(mat);
+
+        if (type.equalsIgnoreCase("cooking")) {
+            return RAW_FOODS.contains(mat) || COOKING_CRAFTS.contains(mat) || COOKED_FOODS.contains(mat);
+        }
+        else if (type.equalsIgnoreCase("smithing")) {
+            return SMITHING_MATERIALS.contains(mat) || SMITHING_CRAFTS.contains(mat);
+        }
         return false;
     }
 
@@ -236,7 +283,6 @@ public class JobManager {
     public String getJob(Player player) { return getJob((OfflinePlayer) player); }
 
     public void joinJob(Player player, String jobName) {
-        // [UPDATE] Check Schedule: Block joining if closed
         if (!plugin.getJobScheduleManager().isJobOpen()) {
             plugin.getJobScheduleManager().sendClosedMessage(player);
             return;

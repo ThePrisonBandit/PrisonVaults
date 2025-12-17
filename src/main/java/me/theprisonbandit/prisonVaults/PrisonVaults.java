@@ -6,6 +6,8 @@ import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.*;
+import me.theprisonbandit.prisonVaults.pets.PVEManager; // Added Import
+import me.theprisonbandit.prisonVaults.pets.PVPManager;
 import me.theprisonbandit.prisonVaults.pets.PetAttackListener;
 import me.theprisonbandit.prisonVaults.pets.PetListener;
 import me.theprisonbandit.prisonVaults.pets.PetManager;
@@ -19,12 +21,14 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.StringUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +37,7 @@ import java.util.*;
 public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     // --- VARIABLES ---
-    private static final double MAX_BALANCE = 999 * Math.pow(10, 33); // 999 Decillion Cap
+    private static final double MAX_BALANCE = 999 * Math.pow(10, 33);
 
     private File pricesFile;
     private FileConfiguration pricesConfig;
@@ -43,7 +47,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     private FileConfiguration ranksConfig;
     public final Map<String, Double> rankLadder = new LinkedHashMap<>();
 
-    // Managers
     public JobScheduleManager jobScheduleManager;
     public ScoreboardManager scoreboardManager;
     public KitManager kitManager;
@@ -51,33 +54,24 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public MailManager mailManager;
     public CooldownManager cooldownManager;
     public JobManager jobManager;
-
-    // Staff Managers
     public RankManager rankManager;
     public StaffMailManager staffMailManager;
-
-    // Permission Manager
     public PermissionManager permissionManager;
-
-    // Compass Manager
     public CompassManager compassManager;
-
-    // Chat Channel Manager
     public ChatChannelManager chatChannelManager;
 
-    // Pet Manager
+    // --- PETS & PVP ---
     public PetManager petManager;
+    public PVPManager pvpManager;
+    public PVEManager pveManager; // Added Variable
 
     @Override
     public void onEnable() {
-        // 1. Load Configurations
         loadPrices();
         loadRanks();
         saveDefaultConfig();
 
-        // 2. Initialize Managers
         this.jobScheduleManager = new JobScheduleManager(this);
-
         this.scoreboardManager = new ScoreboardManager(this);
         this.scoreboardManager.startUpdater();
         this.kitManager = new KitManager(this);
@@ -85,21 +79,15 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.mailManager = new MailManager(this);
         this.cooldownManager = new CooldownManager(this);
         this.jobManager = new JobManager(this);
-
-        // Staff Managers
         this.rankManager = new RankManager(this);
         this.staffMailManager = new StaffMailManager(this);
-
-        // Permission Manager
         this.permissionManager = new PermissionManager(this);
-
-        // Compass Manager
         this.compassManager = new CompassManager(this);
-
-        // Chat Channel Manager
         this.chatChannelManager = new ChatChannelManager(this);
 
-        // Pet Manager
+        // Initialize Pet & PVP/PVE Managers
+        this.pvpManager = new PVPManager(this);
+        this.pveManager = new PVEManager(this); // Init PVE Manager
         this.petManager = new PetManager(this);
 
         // 3. Register Commands
@@ -113,74 +101,49 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("addmoney").setExecutor(new AddMoneyCommand(this));
         this.getCommand("rob").setExecutor(new RobCommand(this));
         this.getCommand("colorify").setExecutor(new ColorifyCommand(this));
-
-        // Kits
         this.getCommand("kit").setExecutor(new KitCommand(this));
         this.getCommand("kits").setExecutor(new KitCommand(this));
         this.getCommand("createkit").setExecutor(new CreateKitCommand(this));
         this.getCommand("buykit").setExecutor(new BuyKitCommand(this));
-
-        // Reset Cooldown Command
         this.getCommand("resetcooldown").setExecutor(new ResetCooldownCommand(this));
-
-        // Gangs & Mail
         this.getCommand("gang").setExecutor(new GangCommand(this));
         this.getCommand("gangs").setExecutor(new GangsCommand(this.gangManager));
         this.getCommand("mail").setExecutor(new MailCommands(this));
         this.getCommand("inbox").setExecutor(new MailCommands(this));
-
-        // Jobs & Profile
         this.getCommand("job").setExecutor(new JobCommand(this));
 
-        // Profile Commands
         ProfileCommand profileCmd = new ProfileCommand(this);
         this.getCommand("myprofile").setExecutor(profileCmd);
         this.getCommand("whois").setExecutor(profileCmd);
         this.getCommand("setbio").setExecutor(profileCmd);
         this.getCommand("setdesc").setExecutor(profileCmd);
 
-        // Configurations & Scoreboard
         this.getCommand("pvconfig").setExecutor(new ConfigCommand(this));
         this.getCommand("pvscoreboard").setExecutor(new ScoreboardCommand(this));
-
-        // Shop & Help
         this.getCommand("pvshop").setExecutor(new ShopCommand(this));
         this.getCommand("pvhelp").setExecutor(new HelpCommand());
-
-        // Staff Commands
         this.getCommand("staff").setExecutor(new StaffManagerCommand(this));
         this.getCommand("setstaff").setExecutor(new SetStaffCommand(this));
         this.getCommand("staffmail").setExecutor(new StaffMailCommand(this));
 
-        // Punishment Commands
         PunishCommands punishCmd = new PunishCommands(this);
         this.getCommand("pvkick").setExecutor(punishCmd);
         this.getCommand("pvban").setExecutor(punishCmd);
         this.getCommand("pvwarn").setExecutor(punishCmd);
         this.getCommand("pvpardon").setExecutor(punishCmd);
 
-        // Permission Command
         this.getCommand("pvperm").setExecutor(new PermsCommand(this));
-
-        // Compass Command
         this.getCommand("pvcompass").setExecutor(new CompassCommand(this));
-
-        // Info Command
         this.getCommand("pvinfo").setExecutor(new InfoCommand(this));
-
-        // Channel Commands
         this.getCommand("staffchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.STAFF));
         this.getCommand("gangchat").setExecutor(new ChannelCommand(this, ChatChannelManager.Channel.GANG));
 
-        // Pet Commands
         PetCommand petCmd = new PetCommand(this);
         this.getCommand("pets").setExecutor(petCmd);
         this.getCommand("petshop").setExecutor(petCmd);
 
-        // Announcement Command
         this.getCommand("pvannounce").setExecutor(new AnnounceCommand(this));
 
-        // 4. Register Events
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
@@ -188,25 +151,15 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ProfileListener(this), this);
-
-        // Register Staff & Ability Listeners
         this.getServer().getPluginManager().registerEvents(new StaffManagementListener(this), this);
         this.getServer().getPluginManager().registerEvents(this.staffMailManager, this);
         this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this);
-
-        // Register Permission Manager Listener
         this.getServer().getPluginManager().registerEvents(new PermissionListener(this), this);
-
-        // Pet Listener
         this.getServer().getPluginManager().registerEvents(new PetListener(this), this);
 
-        // Pet Attack Listener
         this.getServer().getPluginManager().registerEvents(new PetAttackListener(this), this);
-
-        // Donation Listener
         this.getServer().getPluginManager().registerEvents(new DonationListener(this), this);
 
-        // 5. Start Animation Task
         new AnimationTask(this).runTaskTimer(this, 0L, 1L);
 
         getLogger().info("PrisonVaults enabled successfully!");
@@ -214,20 +167,17 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
     @Override
     public void onDisable() {
-        // Cleanup Pets
         if (petManager != null) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 petManager.despawnPet(p);
             }
         }
-
         if (gangManager != null) gangManager.saveGangs();
         if (cooldownManager != null) cooldownManager.saveCooldowns();
         if (compassManager != null) compassManager.removeAll();
         getLogger().info("PrisonVaults disabled.");
     }
 
-    // --- COMMAND EXECUTOR (PV & PAY) ---
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         // RELOAD
@@ -300,6 +250,29 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         return true;
     }
 
+    // --- TAB COMPLETION ---
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (alias.equalsIgnoreCase("pv") && sender instanceof Player) {
+            if (args.length == 1) {
+                Player p = (Player) sender;
+                int max = getMaxVaults(p);
+                List<String> vaults = new ArrayList<>();
+                for (int i = 1; i <= max; i++) {
+                    vaults.add(String.valueOf(i));
+                }
+                return StringUtil.copyPartialMatches(args[0], vaults, new ArrayList<>());
+            }
+        }
+        if (alias.equalsIgnoreCase("pay")) {
+            if (args.length == 1) return null; // Default to online players
+        }
+        if (alias.equalsIgnoreCase("prisonvaults")) {
+            if (args.length == 1) return StringUtil.copyPartialMatches(args[0], Collections.singletonList("reload"), new ArrayList<>());
+        }
+        return Collections.emptyList();
+    }
+
     // --- METHODS ---
     public void openVault(Player player, int vaultNumber) {
         FileConfiguration d = getPlayerData(player.getUniqueId());
@@ -326,9 +299,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         try { d.save(f); } catch (IOException e) {}
     }
 
-    // --- RANK & BALANCE ---
-
-    // 1. Get Rank
     public String getPlayerRank(OfflinePlayer player) {
         FileConfiguration d = getPlayerData(player.getUniqueId());
         if (rankLadder.isEmpty()) return "A";
@@ -351,7 +321,6 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         return (i + 1) * 4;
     }
 
-    // 2. Get Balance
     public double getBalance(OfflinePlayer player) {
         FileConfiguration d = getPlayerData(player.getUniqueId());
         return d.getDouble("economy.balance", 0.0);

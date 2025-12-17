@@ -5,16 +5,18 @@ import org.bukkit.entity.EntityType;
 
 public enum PetType {
     // --- COMMON ($5,000) ---
-    TABBY_CAT("Tabby Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Tabby", false),
-    TUXEDO_CAT("Tuxedo Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Black", false),
-    CALICO_CAT("Calico Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Calico", false),
-    SIAMESE_CAT("Siamese Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Siamese", false),
-    PERSIAN_CAT("Persian Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Persian", false),
-    RAGDOLL_CAT("Ragdoll Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Ragdoll", false),
-    BRITISH_SHORTHAIR("British Shorthair", EntityType.CAT, 5000, 1.0, Material.COD, "British_Shorthair", false),
-    GINGER_CAT("Ginger Cat", EntityType.CAT, 5000, 1.0, Material.COD, "Red", false),
-    BLACK_CAT("Black Cat", EntityType.CAT, 5000, 1.0, Material.COD, "All_Black", false),
-    WHITE_CAT("White Cat", EntityType.CAT, 5000, 1.0, Material.COD, "White", false),
+    // FIX: All variants changed to UPPERCASE to match Bukkit Enums
+    TABBY_CAT("Tabby Cat", EntityType.CAT, 5000, 1.0, Material.COD, "TABBY", false),
+    TUXEDO_CAT("Tuxedo Cat", EntityType.CAT, 5000, 1.0, Material.COD, "BLACK", false),
+    CALICO_CAT("Calico Cat", EntityType.CAT, 5000, 1.0, Material.COD, "CALICO", false),
+    SIAMESE_CAT("Siamese Cat", EntityType.CAT, 5000, 1.0, Material.COD, "SIAMESE", false),
+    PERSIAN_CAT("Persian Cat", EntityType.CAT, 5000, 1.0, Material.COD, "PERSIAN", false),
+    RAGDOLL_CAT("Ragdoll Cat", EntityType.CAT, 5000, 1.0, Material.COD, "RAGDOLL", false),
+    BRITISH_SHORTHAIR("British Shorthair", EntityType.CAT, 5000, 1.0, Material.COD, "BRITISH_SHORTHAIR", false),
+    GINGER_CAT("Ginger Cat", EntityType.CAT, 5000, 1.0, Material.COD, "RED", false),
+    BLACK_CAT("Black Cat", EntityType.CAT, 5000, 1.0, Material.COD, "ALL_BLACK", false),
+    WHITE_CAT("White Cat", EntityType.CAT, 5000, 1.0, Material.COD, "WHITE", false),
+    JELLIE_CAT("Jellie Cat", EntityType.CAT, 5000, 1.0, Material.COD, "JELLIE", false),
     DOG("Dog", EntityType.WOLF, 5000, 1.0, Material.BONE, null, false),
 
     // --- UNCOMMON ($15,000) ---
@@ -24,7 +26,8 @@ public enum PetType {
     PARROT_CYAN("Cyan Parrot", EntityType.PARROT, 15000, 1.0, Material.FEATHER, "CYAN", true),
     PARROT_GRAY("Gray Parrot", EntityType.PARROT, 15000, 1.0, Material.FEATHER, "GRAY", true),
     BAT("Bat", EntityType.BAT, 15000, 1.0, Material.COAL, null, true),
-    AXOLOTL("Axolotl", EntityType.AXOLOTL, 15000, 1.0, Material.AXOLOTL_BUCKET, null, false), // NEW
+    AXOLOTL("Axolotl", EntityType.AXOLOTL, 15000, 1.0, Material.AXOLOTL_BUCKET, null, false),
+    BEE("Bee", EntityType.BEE, 15000, 0.8, Material.HONEYCOMB, null, true),
 
     // --- FOXES ($20,000) ---
     FOX_RED("Red Fox", EntityType.FOX, 20000, 0.7, Material.SWEET_BERRIES, "RED", false),
@@ -43,7 +46,8 @@ public enum PetType {
     LIL_WITHER_SKELETON("Lil Wither Skeleton", EntityType.WITHER_SKELETON, 250000, 0.5, Material.WITHER_SKELETON_SKULL, null, false),
     LIL_BLAZE("Lil Blaze", EntityType.BLAZE, 250000, 0.4, Material.BLAZE_ROD, null, true),
     LIL_GHAST("Lil Ghast", EntityType.GHAST, 300000, 0.1, Material.GHAST_TEAR, null, true),
-    LIL_HAPPY_GHAST("Lil Happy Ghast", EntityType.GHAST, 350000, 0.1, Material.GHAST_TEAR, null, true), // NEW
+    // REMOVED HAPPY GHAST
+    LIL_PHANTOM("Lil Phantom", EntityType.PHANTOM, 350000, 0.5, Material.PHANTOM_MEMBRANE, null, true), // NEW
 
     // --- MYTHICAL ($1,000,000+) ---
     LIL_WARDEN("Lil Warden", EntityType.WARDEN, 2000000, 0.35, Material.SCULK_SENSOR, null, false),
@@ -67,4 +71,9 @@ public enum PetType {
         this.variant = variant;
         this.flying = flying;
     }
+
+    public String getDisplayName() { return display; }
+    public EntityType getEntityType() { return type; }
+    public double getPrice() { return price; }
+    public Material getIcon() { return icon; }
 }

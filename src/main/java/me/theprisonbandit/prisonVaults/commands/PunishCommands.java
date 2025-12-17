@@ -10,11 +10,16 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil; // Added
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-public class PunishCommands implements CommandExecutor {
+public class PunishCommands implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
 
@@ -26,7 +31,6 @@ public class PunishCommands implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         String cmd = label.toLowerCase();
 
-        // 1. Permission Checks
         if (cmd.equals("pvwarn") && !sender.hasPermission("prisonvaults.warn")) {
             sender.sendMessage(ChatColor.RED + "No permission (Requires Moderator+).");
             return true;
@@ -44,7 +48,6 @@ public class PunishCommands implements CommandExecutor {
             return true;
         }
 
-        // 2. Validate Args
         if (args.length < 1) {
             sender.sendMessage(ChatColor.RED + "Usage: /" + label + " <player> [reason]");
             return true;
@@ -52,10 +55,8 @@ public class PunishCommands implements CommandExecutor {
 
         String targetName = args[0];
         String reason = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "Punished by Staff";
-
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
 
-        // 3. PARDON LOGIC (No rank check needed, just unban)
         if (cmd.equals("pvpardon")) {
             Bukkit.getBanList(org.bukkit.BanList.Type.NAME).pardon(targetName);
             sender.sendMessage(ChatColor.GREEN + "Unbanned " + targetName + ".");
@@ -63,7 +64,6 @@ public class PunishCommands implements CommandExecutor {
             return true;
         }
 
-        // 4. RANK PROTECTION CHECK (For Warn, Kick, Ban)
         RankManager.Rank targetRank = plugin.rankManager.getRank(target);
         if (targetRank == RankManager.Rank.OWNER || targetRank == RankManager.Rank.CO_OWNER) {
             sender.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "ERROR: " + ChatColor.RED + "You cannot " + cmd.replace("pv", "") + " an Owner or Co-Owner!");
@@ -73,9 +73,6 @@ public class PunishCommands implements CommandExecutor {
             return true;
         }
 
-        // 5. EXECUTE ACTIONS
-
-        // --- WARN ---
         if (cmd.equals("pvwarn")) {
             plugin.staffMailManager.sendToAllStaff("System", sender.getName() + " warned " + target.getName() + " (" + reason + ")");
             sender.sendMessage(ChatColor.GREEN + "Warned " + target.getName());
@@ -86,12 +83,10 @@ public class PunishCommands implements CommandExecutor {
                 onlineTarget.sendTitle(ChatColor.RED + "WARNING", ChatColor.YELLOW + reason, 10, 70, 20);
                 SoundUtils.playSound(onlineTarget, Sound.ENTITY_ENDER_DRAGON_GROWL, 1f, 1f);
             } else {
-                // Send mail to offline player so they see it on join
                 plugin.mailManager.sendMail("Server", target.getUniqueId(), ChatColor.RED + "WARNING: " + reason);
             }
         }
 
-        // --- KICK ---
         else if (cmd.equals("pvkick")) {
             if (target.isOnline()) {
                 ((Player) target).kickPlayer(ChatColor.RED + "Kicked: " + ChatColor.WHITE + reason);
@@ -102,7 +97,6 @@ public class PunishCommands implements CommandExecutor {
             }
         }
 
-        // --- BAN ---
         else if (cmd.equals("pvban")) {
             Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(targetName, reason, null, sender.getName());
             if (target.isOnline()) {
@@ -113,5 +107,15 @@ public class PunishCommands implements CommandExecutor {
         }
 
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            return null; // Players
+        } else if (args.length >= 2) {
+            return StringUtil.copyPartialMatches(args[args.length-1], Arrays.asList("Hacking", "Griefing", "Spam", "Disrespect", "Abuse"), new ArrayList<>());
+        }
+        return Collections.emptyList();
     }
 }

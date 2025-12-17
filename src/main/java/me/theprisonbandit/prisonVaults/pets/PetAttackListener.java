@@ -1,12 +1,13 @@
 package me.theprisonbandit.prisonVaults.pets;
 
 import me.theprisonbandit.prisonVaults.PrisonVaults;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.projectiles.ProjectileSource;
 
 public class PetAttackListener implements Listener {
 
@@ -16,6 +17,51 @@ public class PetAttackListener implements Listener {
         this.plugin = plugin;
     }
 
+    // --- FIX: PET AGGRESSION CONTROL (High Priority) ---
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPetDamageEntity(EntityDamageByEntityEvent event) {
+        Entity damager = event.getDamager();
+        Entity victim = event.getEntity();
+
+        // Handle Projectiles (e.g. Blaze Fireball, Skeleton Arrow)
+        if (damager instanceof Projectile) {
+            ProjectileSource source = ((Projectile) damager).getShooter();
+            if (source instanceof Entity) {
+                damager = (Entity) source;
+            }
+        }
+
+        // Check if the Attacker is a Pet
+        if (plugin.petManager.isPet(damager)) {
+            Player owner = plugin.petManager.getPetOwner((LivingEntity) damager);
+            if (owner == null) return;
+
+            // 1. Prevent attacking Owner
+            if (victim.equals(owner)) {
+                event.setCancelled(true);
+                if (damager instanceof Mob) {
+                    ((Mob) damager).setTarget(null); // STOP TARGETING
+                }
+                return;
+            }
+
+            // 2. Prevent attacking other players if Owner is PVE
+            if (victim instanceof Player) {
+                boolean ownerPvp = plugin.pvpManager.isPvpEnabled(owner);
+                boolean victimPvp = plugin.pvpManager.isPvpEnabled((Player) victim);
+
+                // If either is in PVE (Safe) mode, cancel attack
+                if (!ownerPvp || !victimPvp) {
+                    event.setCancelled(true);
+                    if (damager instanceof Mob) {
+                        ((Mob) damager).setTarget(null); // STOP TARGETING
+                    }
+                }
+            }
+        }
+    }
+
+    // --- YOUR EXISTING CODE: PLAYER COMMANDING PET ---
     @EventHandler
     public void onAttack(EntityDamageByEntityEvent event) {
         // Check if the attacker is a player
@@ -35,6 +81,15 @@ public class PetAttackListener implements Listener {
 
         // Prevent pet from attacking itself
         if (target.equals(pet)) return;
+
+        // PVP Check for Commanding Pet
+        if (target instanceof Player) {
+            Player victimPlayer = (Player) target;
+            if (!plugin.pvpManager.canAttack(player, victimPlayer)) {
+                player.sendMessage(ChatColor.RED + "You or the target are in PVE mode!");
+                return;
+            }
+        }
 
         // Command the pet to attack
         plugin.petManager.attackTarget(player, target);

@@ -22,7 +22,6 @@ public class KitManager {
 
     private final PrisonVaults plugin;
     private final Map<String, Kit> kits = new HashMap<>();
-    // NEW: Cooldown Tracking Map <PlayerUUID, Map<KitName, CooldownEndTimeMillis>>
     private final Map<UUID, Map<String, Long>> kitCooldowns = new HashMap<>();
 
     private File kitsFile;
@@ -33,17 +32,14 @@ public class KitManager {
         loadKits();
     }
 
-    // --- NEW: COOLDOWN LOGIC ---
     public void resetAllCooldowns() {
         kitCooldowns.clear();
     }
 
-    // Note: Call this in giveKit if you want to enforce cooldowns
     public boolean isOnCooldown(Player player, String kitName) {
         if (!kitCooldowns.containsKey(player.getUniqueId())) return false;
         Map<String, Long> pCooldowns = kitCooldowns.get(player.getUniqueId());
         if (!pCooldowns.containsKey(kitName.toLowerCase())) return false;
-
         return System.currentTimeMillis() < pCooldowns.get(kitName.toLowerCase());
     }
 
@@ -51,7 +47,6 @@ public class KitManager {
         kitCooldowns.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
                 .put(kitName.toLowerCase(), System.currentTimeMillis() + (cooldownSeconds * 1000));
     }
-    // ---------------------------
 
     public void giveKit(Player player, String kitName) {
         Kit kit = kits.get(kitName.toLowerCase());
@@ -60,18 +55,7 @@ public class KitManager {
             return;
         }
 
-        // Example Cooldown Check (Optional - you can enable this)
-        /*
-        if (isOnCooldown(player, kitName) && !player.hasPermission("prisonvaults.bypass.cooldown")) {
-             player.sendMessage(ChatColor.RED + "You must wait before using this kit again.");
-             return;
-        }
-        setCooldown(player, kitName, 3600); // 1 Hour default
-        */
-
-        // List to hold items that need to go into the inventory (not equipped)
         List<ItemStack> itemsToGive = new ArrayList<>();
-        boolean armorEquipped = false;
 
         for (ItemStack item : kit.getItems()) {
             if (item == null || item.getType() == Material.AIR) continue;
@@ -80,7 +64,6 @@ public class KitManager {
             String type = toGive.getType().name();
             boolean equipped = false;
 
-            // --- AUTO EQUIP LOGIC ---
             if (type.endsWith("_HELMET") && player.getInventory().getHelmet() == null) {
                 player.getInventory().setHelmet(toGive);
                 equipped = true;
@@ -98,14 +81,11 @@ public class KitManager {
                 equipped = true;
             }
 
-            if (equipped) {
-                armorEquipped = true;
-            } else {
+            if (!equipped) {
                 itemsToGive.add(toGive);
             }
         }
 
-        // Add remaining items to inventory or drop them if full
         boolean inventoryFull = false;
         if (!itemsToGive.isEmpty()) {
             for (ItemStack item : itemsToGive) {
@@ -124,44 +104,29 @@ public class KitManager {
         }
 
         player.sendMessage(ChatColor.GREEN + "Received kit: " + ChatColor.YELLOW + kit.getName());
-
-        // Optional Sound
         SoundUtils.playSound(player, Sound.ITEM_ARMOR_EQUIP_DIAMOND, 1.0f, 1.0f);
     }
 
-    public Kit getKit(String name) {
-        return kits.get(name.toLowerCase());
-    }
-
-    public Collection<Kit> getAllKits() {
-        return kits.values();
-    }
-
-    // --- CREATION LOGIC ---
+    public Kit getKit(String name) { return kits.get(name.toLowerCase()); }
+    public Collection<Kit> getAllKits() { return kits.values(); }
 
     public void createProceduralKit(String name, String colorName, String toolTier, String armorTier, int enchantLevel, double price) {
         List<ItemStack> items = new ArrayList<>();
         ChatColor color = getColor(colorName);
 
-        // 1. Generate Tools & Weapons (Shivs, Cleavers, etc.)
-        items.add(createItem(toolTier, "SWORD", name, color, enchantLevel)); // Shiv
-        items.add(createItem(toolTier, "AXE", name, color, enchantLevel));   // Cleaver
+        items.add(createItem(toolTier, "SWORD", name, color, enchantLevel));
+        items.add(createItem(toolTier, "AXE", name, color, enchantLevel));
         items.add(createItem(toolTier, "PICKAXE", name, color, enchantLevel));
-        items.add(createItem(toolTier, "SHOVEL", name, color, enchantLevel)); // Digging Shovel
-
-        // 2. Generate Armor (Combat Armor)
+        items.add(createItem(toolTier, "SHOVEL", name, color, enchantLevel));
         items.add(createItem(armorTier, "HELMET", name, color, enchantLevel));
         items.add(createItem(armorTier, "CHESTPLATE", name, color, enchantLevel));
         items.add(createItem(armorTier, "LEGGINGS", name, color, enchantLevel));
         items.add(createItem(armorTier, "BOOTS", name, color, enchantLevel));
-
-        // 3. Abilities & Food
         items.add(createAbilityItem("MedKit", 2));
         items.add(createAbilityItem("SwiftFeet", 1));
         items.add(new ItemStack(Material.GOLDEN_CARROT, 64));
 
-        // 4. Create Kit Object
-        ItemStack icon = items.get(0).clone(); // Use first item (Sword/Shiv) as icon
+        ItemStack icon = items.get(0).clone();
         Kit kit = new Kit(name, items, icon, price, "prisonvaults.kit." + name.toLowerCase());
 
         kits.put(name.toLowerCase(), kit);
@@ -174,7 +139,6 @@ public class KitManager {
         if (matPrefix.equals("GOLD")) matPrefix = "GOLDEN";
 
         Material mat = Material.matchMaterial(matPrefix + "_" + type);
-        // Better fallbacks for different types
         if (mat == null) {
             if (type.equals("SWORD")) mat = Material.STONE_SWORD;
             else if (type.equals("AXE")) mat = Material.STONE_AXE;
@@ -185,67 +149,33 @@ public class KitManager {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
 
-        // --- CUSTOM NAMING & LORE ---
-        String displayName = "";
+        String displayName = kitName + " " + type.charAt(0) + type.substring(1).toLowerCase();
         List<String> lore = new ArrayList<>();
-
-        switch (type) {
-            case "SWORD":
-                displayName = kitName + " Shiv";
-                lore.add(ChatColor.GRAY + "Right-Click to Shank.");
-                lore.add(ChatColor.RED + "Deals bleed damage over time.");
-                break;
-            case "AXE":
-                displayName = kitName + " Cleaver";
-                lore.add(ChatColor.RED + "Always deals Critical Hits.");
-                break;
-            case "SHOVEL":
-                displayName = kitName + " Digging Shovel";
-                lore.add(ChatColor.GOLD + "Digs a 3x3 area.");
-                break;
-            case "PICKAXE":
-                displayName = kitName + " Pickaxe";
-                lore.add(ChatColor.GRAY + "Standard issue mining tool.");
-                break;
-            case "HELMET":
-                displayName = kitName + " Combat Helmet";
-                lore.add(ChatColor.BLUE + "Head protection.");
-                break;
-            case "CHESTPLATE":
-                displayName = kitName + " Body Armor";
-                lore.add(ChatColor.BLUE + "Heavy torso protection.");
-                break;
-            case "LEGGINGS":
-                displayName = kitName + " Combat Pants";
-                lore.add(ChatColor.BLUE + "Tactical legwear.");
-                break;
-            case "BOOTS":
-                displayName = kitName + " Combat Boots";
-                lore.add(ChatColor.BLUE + "Reinforced footwear.");
-                break;
-        }
+        lore.add(ChatColor.GRAY + "Tier: " + tier);
 
         meta.setDisplayName(color + displayName);
+        meta.setLore(lore);
+        item.setItemMeta(meta);
 
-        // --- ENCHANTS ---
-        meta.addEnchant(Enchantment.UNBREAKING, enchantLvl, true);
+        // --- ENCHANTMENT FIX (Unsafe Levels) ---
+        // We apply to ItemMeta with ignoreLevelRestriction=true
+        // And fallback to ItemStack unsafe if needed.
+        item.addUnsafeEnchantment(Enchantment.UNBREAKING, enchantLvl);
 
         if (type.equals("PICKAXE") || type.equals("SHOVEL") || type.equals("AXE")) {
-            meta.addEnchant(Enchantment.FORTUNE, enchantLvl, true);
-            meta.addEnchant(Enchantment.EFFICIENCY, enchantLvl, true);
+            item.addUnsafeEnchantment(Enchantment.FORTUNE, enchantLvl);
+            item.addUnsafeEnchantment(Enchantment.EFFICIENCY, enchantLvl);
         }
 
         if (type.contains("HELMET") || type.contains("CHEST") || type.contains("LEG") || type.contains("BOOTS")) {
-            meta.removeEnchant(Enchantment.FORTUNE); // Remove default fortune
-            meta.addEnchant(Enchantment.PROTECTION, enchantLvl, true);
+            item.removeEnchantment(Enchantment.FORTUNE);
+            item.addUnsafeEnchantment(Enchantment.PROTECTION, enchantLvl);
         }
 
         if (type.equals("SWORD") || type.equals("AXE")) {
-            meta.addEnchant(Enchantment.SHARPNESS, enchantLvl, true);
+            item.addUnsafeEnchantment(Enchantment.SHARPNESS, enchantLvl);
         }
 
-        meta.setLore(lore);
-        item.setItemMeta(meta);
         return item;
     }
 
@@ -270,29 +200,23 @@ public class KitManager {
         meta.addEnchant(Enchantment.UNBREAKING, 1, true);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
         item.setItemMeta(meta);
-
         return item;
     }
 
     public void generateRankPresets() {
-        // Only generate if they don't exist
         for (char rank = 'A'; rank <= 'Z'; rank++) {
             String kitName = "Rank" + rank;
             if (!kits.containsKey(kitName.toLowerCase())) {
                 String tool = (rank < 'E') ? "WOOD" : (rank < 'J') ? "STONE" : (rank < 'O') ? "IRON" : (rank < 'T') ? "DIAMOND" : "NETHERITE";
                 String armor = (rank < 'E') ? "LEATHER" : (rank < 'J') ? "CHAINMAIL" : (rank < 'O') ? "IRON" : (rank < 'T') ? "DIAMOND" : "NETHERITE";
-                int enchant = (rank - 'A') / 5 + 1;
-
+                int enchant = (rank - 'A') / 2 + 1; // Increase enchant level scaling
                 createProceduralKit(kitName, "GREEN", tool, armor, enchant, 0.0);
             }
         }
-        // Starter Kit
         if (!kits.containsKey("starter")) {
             createProceduralKit("Starter", "YELLOW", "WOOD", "LEATHER", 1, 0.0);
         }
     }
-
-    // --- FILE I/O ---
 
     private void saveKits() {
         for (Kit kit : kits.values()) {
@@ -308,9 +232,7 @@ public class KitManager {
 
     private void loadKits() {
         kitsFile = new File(plugin.getDataFolder(), "kits.yml");
-        if (!kitsFile.exists()) {
-            plugin.saveResource("kits.yml", false);
-        }
+        if (!kitsFile.exists()) plugin.saveResource("kits.yml", false);
         kitsConfig = YamlConfiguration.loadConfiguration(kitsFile);
 
         if (kitsConfig.contains("kits")) {
@@ -321,20 +243,14 @@ public class KitManager {
                 String perm = sec.getString("perm");
                 ItemStack icon = sec.getItemStack("icon");
                 List<ItemStack> items = (List<ItemStack>) sec.getList("items");
-
                 kits.put(name.toLowerCase(), new Kit(name, items, icon, price, perm));
             }
         }
         generateRankPresets();
     }
 
-    // --- UTILS ---
     private ChatColor getColor(String name) {
         try { return ChatColor.valueOf(name.toUpperCase()); }
         catch (Exception e) { return ChatColor.WHITE; }
-    }
-
-    private String capitalize(String str) {
-        return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
     }
 }

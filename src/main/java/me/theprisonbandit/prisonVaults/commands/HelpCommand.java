@@ -2,13 +2,15 @@ package me.theprisonbandit.prisonVaults.commands;
 
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
+import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class HelpCommand implements CommandExecutor {
+public class HelpCommand implements TabExecutor {
 
     private final List<String> helpLines = new ArrayList<>();
     private static final int LINES_PER_PAGE = 8;
@@ -48,6 +50,19 @@ public class HelpCommand implements CommandExecutor {
         return true;
     }
 
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 1) {
+            int totalPages = (int) Math.ceil((double) helpLines.size() / LINES_PER_PAGE);
+            List<String> pages = new ArrayList<>();
+            for (int i = 1; i <= totalPages; i++) {
+                pages.add(String.valueOf(i));
+            }
+            return StringUtil.copyPartialMatches(args[0], pages, new ArrayList<>());
+        }
+        return Collections.emptyList();
+    }
+
     private void loadHelp() {
         // --- CORE & ECONOMY ---
         addCmd("/pv <number>", "Open a personal vault");
@@ -60,13 +75,13 @@ public class HelpCommand implements CommandExecutor {
         addCmd("/colorify <preset>", "Set a gradient name color");
 
         // --- JOBS & SHOPS ---
-        addCmd("/job <join|quit|shop|info|promote>", "Join or quit jobs");
-        addCmd("/pvshop <messhall|smithy>", "Open the job ingredient shops");
+        addCmd("/job <join|quit|info|promote>", "Join or quit jobs");
+        addCmd("/pvshop <buy|sell> <messhall|smithy>", "Open the job ingredient shops");
 
         // --- GANGS ---
         addCmd("/gang", "Main gang command");
         addCmd("/gangs", "List all gangs on the server");
-        addCmd("/gangchat (or /gc)", "Toggle or send gang chat"); // NEW
+        addCmd("/gangchat (or /gc)", "Toggle or send gang chat");
 
         // --- PROFILES ---
         addCmd("/myprofile", "View your stats");
@@ -77,7 +92,7 @@ public class HelpCommand implements CommandExecutor {
         addCmd("/mail <gang> or <player>", "Send mail");
         addCmd("/inbox", "Check mail");
 
-        // --- PETS (NEW) ---
+        // --- PETS ---
         addCmd("/pets", "Open your pet collection");
         addCmd("/petshop", "Buy new pets");
 
@@ -102,7 +117,7 @@ public class HelpCommand implements CommandExecutor {
         addCmd("/staff", "Open the Staff Management GUI");
         addCmd("/setstaff <player> <rank>", "Set a player's staff rank (OP Only)");
         addCmd("/staffmail <read|clear>", "Check staff notifications/mail");
-        addCmd("/staffchat (or /sc)", "Toggle or send staff chat"); // NEW
+        addCmd("/staffchat (or /sc)", "Toggle or send staff chat");
 
         // --- PUNISHMENTS ---
         addCmd("/pvkick <player> [reason]", "Kick a player (Owners protected)");

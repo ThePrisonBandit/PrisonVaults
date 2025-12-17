@@ -8,9 +8,17 @@ import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added Import
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil; // Added Import
 
-public class JobCommand implements CommandExecutor {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+// Added "implements TabCompleter"
+public class JobCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
 
@@ -21,14 +29,12 @@ public class JobCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(ChatColor.RED + "Usage: /job <join|quit|shop|info|promote>");
+            sender.sendMessage(ChatColor.RED + "Usage: /job <join|quit|info|promote>");
             return true;
         }
 
         String sub = args[0].toLowerCase();
         Player player = (sender instanceof Player) ? (Player) sender : null;
-
-        // --- PLAYER COMMANDS ---
 
         if (sub.equals("join") && player != null) {
             if (args.length < 2) {
@@ -44,23 +50,6 @@ public class JobCommand implements CommandExecutor {
             return true;
         }
 
-        // --- SHOP (UPDATED FOR GLOBAL MARKET) ---
-        if (sub.equals("shop") && player != null) {
-            String job = plugin.jobManager.getJob(player);
-
-            if (job.equalsIgnoreCase("Cooking")) {
-                // Opens Page 1 of the Cooking Global Shop
-                plugin.jobManager.openShop(player, "cooking", 1);
-            } else if (job.equalsIgnoreCase("Blacksmith")) {
-                // Opens Page 1 of the Smithing Global Shop
-                plugin.jobManager.openShop(player, "smithing", 1);
-            } else {
-                player.sendMessage(ChatColor.RED + "You don't have a job with a shop! (Join Cooking or Blacksmith)");
-            }
-            return true;
-        }
-
-        // --- INFO (UPDATED) ---
         if (sub.equals("info") && player != null) {
             String job = plugin.jobManager.getJob(player);
             if (job.equalsIgnoreCase("None")) {
@@ -94,7 +83,6 @@ public class JobCommand implements CommandExecutor {
             return true;
         }
 
-        // --- ADMIN COMMAND: PROMOTE ---
         if (sub.equals("promote")) {
             if (!sender.hasPermission("prisonvaults.admin")) {
                 sender.sendMessage(ChatColor.RED + "No permission.");
@@ -140,5 +128,26 @@ public class JobCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    // --- NEW: TAB COMPLETION ---
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            List<String> subs = new ArrayList<>(Arrays.asList("join", "quit", "info"));
+            if (sender.hasPermission("prisonvaults.admin")) subs.add("promote");
+            StringUtil.copyPartialMatches(args[0], subs, completions);
+        }
+        else if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("join")) {
+                StringUtil.copyPartialMatches(args[1], Arrays.asList("Cooking", "Blacksmith"), completions);
+            } else if (args[0].equalsIgnoreCase("promote")) {
+                return null; // Players
+            }
+        }
+
+        return completions;
     }
 }

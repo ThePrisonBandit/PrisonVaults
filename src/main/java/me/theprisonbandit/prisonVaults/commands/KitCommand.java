@@ -6,13 +6,17 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter; // Added Import
 import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil; // Added Import
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class KitCommand implements CommandExecutor {
+// Added "implements TabCompleter"
+public class KitCommand implements CommandExecutor, TabCompleter {
 
     private final PrisonVaults plugin;
 
@@ -25,7 +29,6 @@ public class KitCommand implements CommandExecutor {
         if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
 
-        // --- /kits (List Command) ---
         if (label.equalsIgnoreCase("kits") || args.length == 0) {
             player.sendMessage(ChatColor.GOLD + "--- Available Kits ---");
 
@@ -62,7 +65,6 @@ public class KitCommand implements CommandExecutor {
             return true;
         }
 
-        // --- /kit <name> (Give Command) ---
         String kitName = args[0];
         Kit kit = plugin.kitManager.getKit(kitName);
 
@@ -76,10 +78,8 @@ public class KitCommand implements CommandExecutor {
             return true;
         }
 
-        // --- 1. COOLDOWN CHECK ---
         String cooldownKey = "kit_" + kit.getName().toLowerCase();
 
-        // Bypass permission check (optional, good for admins)
         if (!player.hasPermission("prisonvaults.bypass.cooldown")) {
             if (plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cooldownKey)) {
                 long remaining = plugin.cooldownManager.getRemainingTime(player.getUniqueId(), cooldownKey);
@@ -88,11 +88,8 @@ public class KitCommand implements CommandExecutor {
             }
         }
 
-        // --- 2. GIVE KIT ---
         plugin.kitManager.giveKit(player, kitName);
 
-        // --- 3. SET COOLDOWN (1 Day = 86400 Seconds) ---
-        // Only set cooldown if they don't have bypass permission
         if (!player.hasPermission("prisonvaults.bypass.cooldown")) {
             plugin.cooldownManager.setCooldown(player.getUniqueId(), cooldownKey, 86400);
         }
@@ -100,27 +97,22 @@ public class KitCommand implements CommandExecutor {
         return true;
     }
 
-    // Helper method to print kit status with Cooldown check visually
     private void printKit(Player player, Kit kit) {
         String cooldownKey = "kit_" + kit.getName().toLowerCase();
         boolean onCooldown = plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cooldownKey);
 
         if (player.hasPermission(kit.getPermission())) {
             if (onCooldown) {
-                // If unlocked but on cooldown, show in Red/Gray
                 long remaining = plugin.cooldownManager.getRemainingTime(player.getUniqueId(), cooldownKey);
                 player.sendMessage(ChatColor.RED + "- " + kit.getName() + ChatColor.GRAY + " (Wait: " + formatTime(remaining) + ")");
             } else {
-                // If unlocked and ready
                 player.sendMessage(ChatColor.GREEN + "- " + kit.getName() + " " + ChatColor.GRAY + "(Ready)");
             }
         } else {
-            // Locked
             player.sendMessage(ChatColor.RED + "- " + kit.getName() + " (Locked)");
         }
     }
 
-    // Helper to make seconds look nice (e.g., "23h 59m 10s")
     private String formatTime(long totalSeconds) {
         long hours = totalSeconds / 3600;
         long minutes = (totalSeconds % 3600) / 60;
@@ -132,5 +124,20 @@ public class KitCommand implements CommandExecutor {
         sb.append(seconds).append("s");
 
         return sb.toString().trim();
+    }
+
+    // --- NEW: TAB COMPLETION ---
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1 && !alias.equalsIgnoreCase("kits")) {
+            List<String> kitNames = new ArrayList<>();
+            for (Kit k : plugin.kitManager.getAllKits()) {
+                if (sender.hasPermission(k.getPermission())) {
+                    kitNames.add(k.getName());
+                }
+            }
+            return StringUtil.copyPartialMatches(args[0], kitNames, new ArrayList<>());
+        }
+        return Collections.emptyList();
     }
 }

@@ -16,7 +16,9 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.FurnaceExtractEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.EnumSet;
@@ -93,10 +95,7 @@ public class JobListener implements Listener {
         Material type = event.getItemType();
         int amount = event.getItemAmount();
 
-        // CHECK SCHEDULE: If jobs are closed, do not reward money/XP for smelting
-        if (!canWork(player)) {
-            return;
-        }
+        if (!canWork(player)) return;
 
         // 1. Cooking Smelting (Cooked Food)
         if (job.equalsIgnoreCase("Cooking") && isCookedFood(type)) {
@@ -108,63 +107,69 @@ public class JobListener implements Listener {
         }
     }
 
-    // Helper: Check if item is a cooked food result
-    private boolean isCookedFood(Material mat) {
-        return mat == Material.COOKED_BEEF || mat == Material.COOKED_PORKCHOP ||
-                mat == Material.COOKED_CHICKEN || mat == Material.COOKED_MUTTON ||
-                mat == Material.COOKED_RABBIT || mat == Material.COOKED_COD ||
-                mat == Material.COOKED_SALMON || mat == Material.BAKED_POTATO;
-    }
+    // --- HANDLE SELL GUI CLOSE (Bulk Restocking) ---
+    @EventHandler
+    public void onSellGuiClose(InventoryCloseEvent event) {
+        String title = event.getView().getTitle();
+        // Identify the "Sell GUI" by its title prefix
+        if (!title.startsWith(ChatColor.DARK_GREEN + "Restock:") && !title.startsWith(ChatColor.DARK_GRAY + "Restock:")) return;
 
-    // Helper: Check if item is a smithing smelt result
-    private boolean isSmithingProduct(Material mat) {
-        return mat == Material.IRON_INGOT || mat == Material.GOLD_INGOT ||
-                mat == Material.COPPER_INGOT || mat == Material.NETHERITE_SCRAP;
-    }
+        Player player = (Player) event.getPlayer();
+        Inventory inv = event.getInventory();
 
-    // --- HELPER: CHECK SCHEDULE ---
-    // Returns true if player can work. If false, sends message (with cooldown).
-    private boolean canWork(Player player) {
-        // Use the new isJobOpen() check which covers both Weekends AND Night time
-        if (plugin.getJobScheduleManager().isJobOpen()) {
-            return true;
+        // CHECK: Explicitly check for both Mess Hall and Smithy
+        String type;
+        if (title.contains("Mess Hall")) {
+            type = "cooking";
+        } else if (title.contains("Smithy")) {
+            type = "smithing";
+        } else {
+            return;
         }
 
-        // Prevent chat spam using a cooldown
-        if (!plugin.cooldownManager.isOnCooldown(player.getUniqueId(), "job_closed_msg")) {
-            plugin.jobScheduleManager.sendClosedMessage(player);
-            plugin.cooldownManager.setCooldown(player.getUniqueId(), "job_closed_msg", 5);
+        int itemsAdded = 0;
+        double totalValue = 0;
+
+        // Loop through all items dropped in the bin
+        for (ItemStack item : inv.getContents()) {
+            if (item != null && item.getType() != Material.AIR) {
+                // Validate if item is allowed
+                if (plugin.jobManager.isAllowedInShop(type, item.getType())) {
+
+                    // Add to Shop
+                    plugin.jobManager.addItemToShop(type, item, player);
+                    itemsAdded += item.getAmount();
+
+                    // Pay the player immediately (Bulk Payout)
+                    double unitPrice = plugin.jobManager.getBasePrice(item.getType());
+                    totalValue += (unitPrice * item.getAmount());
+
+                } else {
+                    // Invalid Item -> Give back to player explicitly
+                    player.getInventory().addItem(item);
+                    player.sendMessage(ChatColor.RED + "Returned " + item.getType().name() + " (Not allowed in this shop).");
+                }
+            }
         }
-        return false;
+
+        // CRITICAL FIX: Clear the inventory so items don't bounce back to the player on close
+        inv.clear();
+
+        if (itemsAdded > 0) {
+            plugin.addMoney(player, totalValue);
+            player.sendMessage(ChatColor.GREEN + "Stocked " + itemsAdded + " items for $" + NumberUtils.format(totalValue) + "!");
+            SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        }
     }
 
-    // --- HELPER: GENERIC WORK REWARD ---
-    private void performWork(Player player, String cdKey, double money, double xp, Sound sound) {
-        // 1. Check Cooldown
-        if (plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cdKey)) return;
-
-        // 2. Check Schedule (Now includes Night/Day check)
-        if (!canWork(player)) return;
-
-        // 3. Reward
-        plugin.cooldownManager.setCooldown(player.getUniqueId(), cdKey, 2);
-        plugin.addMoney(player, money);
-        plugin.jobManager.addXp(player, xp);
-        SoundUtils.playSound(player, sound, 0.5f, 1.0f);
-        player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
-                new net.md_5.bungee.api.chat.TextComponent(ChatColor.GOLD + "+$" + money + " | +" + (int)xp + " XP"));
-    }
-
-    // --- D. GLOBAL & ADMIN SHOP LISTENER ---
+    // --- D. GLOBAL SHOP LISTENER (Click Logic) ---
     @EventHandler
     public void onShopClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
-        boolean isAdminMessHall = title.equals(ShopCommand.TITLE_MESSHALL_BUY);
-        boolean isAdminSmithy = title.equals(ShopCommand.TITLE_SMITHY_BUY);
-        boolean isGlobalCooking = !isAdminMessHall && title.startsWith(JobManager.TITLE_COOKING_SHOP);
-        boolean isGlobalSmithy = !isAdminSmithy && title.startsWith(JobManager.TITLE_SMITHY_SHOP);
+        boolean isGlobalCooking = title.startsWith(JobManager.TITLE_COOKING_SHOP);
+        boolean isGlobalSmithy = title.startsWith(JobManager.TITLE_SMITHY_SHOP);
 
-        if (!isGlobalCooking && !isGlobalSmithy && !isAdminMessHall && !isAdminSmithy) return;
+        if (!isGlobalCooking && !isGlobalSmithy) return;
 
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player)) return;
@@ -174,7 +179,7 @@ public class JobListener implements Listener {
         if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
 
         // 1. Pagination
-        if ((isGlobalCooking || isGlobalSmithy) && clickedItem.getType() == Material.ARROW && clickedItem.hasItemMeta()) {
+        if (clickedItem.getType() == Material.ARROW && clickedItem.hasItemMeta()) {
             if (clickedItem.getItemMeta().getLore() != null && !clickedItem.getItemMeta().getLore().isEmpty()) {
                 String pageLine = clickedItem.getItemMeta().getLore().get(0);
                 try {
@@ -185,107 +190,81 @@ public class JobListener implements Listener {
             return;
         }
 
-        // 2. Selling (Global Market)
-        if (event.getClickedInventory() != event.getView().getTopInventory()) {
-            if (isAdminMessHall || isAdminSmithy) return;
-
-            // OPTIONAL: Do you want to block SELLING items when the job center is closed?
-            // If so, uncomment the line below:
-            // if (!canWork(player)) return;
-
-            String shopType = isGlobalCooking ? "cooking" : "smithing";
-            String job = plugin.jobManager.getJob(player);
-
-            if ((isGlobalCooking && !job.equalsIgnoreCase("Cooking")) || (isGlobalSmithy && !job.equalsIgnoreCase("Blacksmith"))) {
-                player.sendMessage(ChatColor.RED + "Wrong job for this shop!");
-                return;
-            }
-
-            if (!plugin.jobManager.isAllowedInShop(shopType, clickedItem.getType())) {
-                player.sendMessage(ChatColor.RED + "Cannot sell this here.");
-                return;
-            }
-
-            double unitPrice = plugin.jobManager.getBasePrice(clickedItem.getType());
-            if (unitPrice <= 0) return;
-
-            ItemStack toSell = clickedItem.clone();
-            player.getInventory().setItem(event.getSlot(), null);
-
-            double totalPayout = unitPrice * toSell.getAmount();
-            plugin.addMoney(player, totalPayout);
-            plugin.jobManager.addItemToShop(shopType, toSell, player);
-
-            int currentPage = getCurrentPage(title);
-            plugin.jobManager.openShop(player, shopType, currentPage);
-
-            player.sendMessage(ChatColor.GREEN + "Listed " + toSell.getAmount() + "x " + toSell.getType().name());
-            SoundUtils.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.5f);
-            return;
-        }
-
-        // 3. Buying
+        // 2. Buying (Clicking an item in the shop)
         if (event.getClickedInventory() == event.getView().getTopInventory()) {
             if (clickedItem.getType() == Material.GRAY_STAINED_GLASS_PANE || clickedItem.getType() == Material.BOOK) return;
 
+            // Prevent buying own items? (Optional, currently allowed)
             double balance = plugin.getBalance(player);
 
-            // Admin Buy (Infinite)
-            if (isAdminMessHall || isAdminSmithy) {
-                double unitPrice = 0;
-                if (clickedItem.hasItemMeta() && clickedItem.getItemMeta().hasLore()) {
-                    for (String line : clickedItem.getItemMeta().getLore()) {
-                        if (line.contains("Cost: $")) {
-                            try { unitPrice = Double.parseDouble(ChatColor.stripColor(line).replace("Cost: $", "").replace(",", "")); } catch (Exception e) {}
-                        }
-                    }
-                }
-                if (unitPrice <= 0) return;
+            double basePrice = plugin.jobManager.getBasePrice(clickedItem.getType());
+            // Attempt to get specific price from Lore
+            double lorePrice = plugin.jobManager.getPriceFromItemLore(clickedItem);
+            double finalPrice = (lorePrice > 0) ? lorePrice : (basePrice * clickedItem.getAmount());
 
-                int amount = event.isShiftClick() ? 64 : 1;
-                double totalCost = unitPrice * amount;
+            if (finalPrice <= 0) return;
 
-                if (balance < totalCost) {
-                    player.sendMessage(ChatColor.RED + "Need $" + NumberUtils.format(totalCost));
-                    SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-                    return;
-                }
-
-                plugin.removeMoney(player, totalCost);
-                ItemStack result = new ItemStack(clickedItem.getType(), amount);
-                player.getInventory().addItem(result);
-                SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
+            if (balance < finalPrice) {
+                player.sendMessage(ChatColor.RED + "Need $" + NumberUtils.format(finalPrice));
+                SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                return;
             }
-            // Global Buy (Listing)
-            else {
-                double basePrice = plugin.jobManager.getBasePrice(clickedItem.getType());
-                if (basePrice <= 0) return;
 
-                int buyAmount = clickedItem.getAmount();
-                double totalCost = basePrice * buyAmount;
+            // Transaction
+            plugin.removeMoney(player, finalPrice);
 
-                if (balance < totalCost) {
-                    player.sendMessage(ChatColor.RED + "Need $" + NumberUtils.format(totalCost));
-                    SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-                    return;
-                }
+            // Give Item (Strip Lore)
+            ItemStack given = clickedItem.clone();
+            given.setItemMeta(null); // Remove the "Sold by..." lore
+            player.getInventory().addItem(given);
 
-                plugin.removeMoney(player, totalCost);
+            // Remove from Shop Data
+            plugin.jobManager.removeItemFromShop(isGlobalCooking ? "cooking" : "smithing", clickedItem);
 
-                ItemStack given = clickedItem.clone();
-                given.setAmount(buyAmount);
-                given.setItemMeta(null);
-                player.getInventory().addItem(given);
+            // Refresh Page
+            int currentPage = getCurrentPage(title);
+            plugin.jobManager.openShop(player, isGlobalCooking ? "cooking" : "smithing", currentPage);
 
-                plugin.jobManager.removeItemFromShop(isGlobalCooking ? "cooking" : "smithing", clickedItem);
-
-                int currentPage = getCurrentPage(title);
-                plugin.jobManager.openShop(player, isGlobalCooking ? "cooking" : "smithing", currentPage);
-
-                player.sendMessage(ChatColor.GREEN + "Purchased listing (" + buyAmount + "x) for $" + NumberUtils.format(totalCost));
-                SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
-            }
+            player.sendMessage(ChatColor.GREEN + "Purchased listing for $" + NumberUtils.format(finalPrice));
+            SoundUtils.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);
         }
+    }
+
+    // --- HELPERS ---
+    private boolean isCookedFood(Material mat) {
+        return mat == Material.COOKED_BEEF || mat == Material.COOKED_PORKCHOP ||
+                mat == Material.COOKED_CHICKEN || mat == Material.COOKED_MUTTON ||
+                mat == Material.COOKED_RABBIT || mat == Material.COOKED_COD ||
+                mat == Material.COOKED_SALMON || mat == Material.BAKED_POTATO;
+    }
+
+    private boolean isSmithingProduct(Material mat) {
+        return mat == Material.IRON_INGOT || mat == Material.GOLD_INGOT ||
+                mat == Material.COPPER_INGOT || mat == Material.NETHERITE_SCRAP;
+    }
+
+    private boolean canWork(Player player) {
+        if (plugin.getJobScheduleManager().isJobOpen()) {
+            return true;
+        }
+
+        if (!plugin.cooldownManager.isOnCooldown(player.getUniqueId(), "job_closed_msg")) {
+            plugin.jobScheduleManager.sendClosedMessage(player);
+            plugin.cooldownManager.setCooldown(player.getUniqueId(), "job_closed_msg", 5);
+        }
+        return false;
+    }
+
+    private void performWork(Player player, String cdKey, double money, double xp, Sound sound) {
+        if (plugin.cooldownManager.isOnCooldown(player.getUniqueId(), cdKey)) return;
+        if (!canWork(player)) return;
+
+        plugin.cooldownManager.setCooldown(player.getUniqueId(), cdKey, 2);
+        plugin.addMoney(player, money);
+        plugin.jobManager.addXp(player, xp);
+        SoundUtils.playSound(player, sound, 0.5f, 1.0f);
+        player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR,
+                new net.md_5.bungee.api.chat.TextComponent(ChatColor.GOLD + "+$" + money + " | +" + (int)xp + " XP"));
     }
 
     private int getCurrentPage(String title) {
