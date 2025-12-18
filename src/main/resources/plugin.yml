@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.1.2'
+version: '1.1.3'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: '!'
@@ -248,6 +248,50 @@ permissions:
     description: Allows broadcasting server-wide announcements
     default: false
 
+  # --- MINECRAFT OVERRIDES ---
+  # Disable Vanilla punishment commands (Hide from non-ops)
+  minecraft.command.kick:
+    default: false
+  minecraft.command.ban:
+    default: false
+  minecraft.command.ban-ip:
+    default: false
+  minecraft.command.pardon:
+    default: false
+  minecraft.command.pardon-ip:
+    default: false
+  minecraft.command.banlist:
+    default: false
+  minecraft.command.enchant:
+    default: false
+  minecraft.command.effect:
+    default: false
+  minecraft.command.give:
+    default: false
+  minecraft.command.gamemode:
+    default: false
+  minecraft.command.gamerule:
+    default: false
+  minecraft.command.spawnpoint:
+    default: false
+  minecraft.command.setworldspawn:
+    default: false
+  minecraft.command.summon:
+    default: false
+  minecraft.command.teleport:
+    default: false
+  minecraft.command.tp:
+    default: false
+  minecraft.command.xp:
+    default: false
+  minecraft.command.op:
+    default: false
+
+  # Enable Vanilla Admin commands for all players
+
+  minecraft.command.help:
+    default: true
+
   # --- RANK HIERARCHIES ---
 
   prisonvaults.helper:
@@ -279,6 +323,7 @@ permissions:
       prisonvaults.pvconfig: true
       prisonvaults.resetcooldown: true
       prisonvaults.admin.announce: true
+      prisonvaults.staff: true
 
   prisonvaults.coowner:
     description: Co-Owner permissions (Inherits Admin + Money + SetStaff)
@@ -287,6 +332,7 @@ permissions:
       prisonvaults.admin: true
       prisonvaults.addmoney: true
       prisonvaults.setstaff: true
+      minecraft.command: true
 
   prisonvaults.owner:
     description: Owner permissions (Inherits Co-Owner + Everything)

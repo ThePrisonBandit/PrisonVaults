@@ -6,11 +6,7 @@ import me.theprisonbandit.prisonVaults.gangs.MailManager;
 import me.theprisonbandit.prisonVaults.kits.KitManager;
 import me.theprisonbandit.prisonVaults.listeners.*;
 import me.theprisonbandit.prisonVaults.managers.*;
-import me.theprisonbandit.prisonVaults.pets.PVEManager; // Added Import
-import me.theprisonbandit.prisonVaults.pets.PVPManager;
-import me.theprisonbandit.prisonVaults.pets.PetAttackListener;
-import me.theprisonbandit.prisonVaults.pets.PetListener;
-import me.theprisonbandit.prisonVaults.pets.PetManager;
+import me.theprisonbandit.prisonVaults.pets.*;
 import me.theprisonbandit.prisonVaults.tasks.AnimationTask;
 import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
@@ -60,10 +56,14 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
     public CompassManager compassManager;
     public ChatChannelManager chatChannelManager;
 
+    // --- LISTENERS (Public for access) ---
+    public StaffManagementListener staffManagementListener; // <--- ADDED THIS
+
     // --- PETS & PVP ---
     public PetManager petManager;
     public PVPManager pvpManager;
-    public PVEManager pveManager; // Added Variable
+    public PVEManager pveManager;
+    public CombatHandlingManager combatHandlingManager;
 
     @Override
     public void onEnable() {
@@ -87,8 +87,13 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
         // Initialize Pet & PVP/PVE Managers
         this.pvpManager = new PVPManager(this);
-        this.pveManager = new PVEManager(this); // Init PVE Manager
+        this.pveManager = new PVEManager(this);
+        this.combatHandlingManager = new CombatHandlingManager(this);
         this.petManager = new PetManager(this);
+
+        // --- LISTENERS ---
+        // Initialize StaffManagementListener specifically so commands can access it
+        this.staffManagementListener = new StaffManagementListener(this); // <--- INITIALIZED HERE
 
         // 3. Register Commands
         this.getCommand("pv").setExecutor(this);
@@ -122,7 +127,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getCommand("pvscoreboard").setExecutor(new ScoreboardCommand(this));
         this.getCommand("pvshop").setExecutor(new ShopCommand(this));
         this.getCommand("pvhelp").setExecutor(new HelpCommand());
-        this.getCommand("staff").setExecutor(new StaffManagerCommand(this));
+        this.getCommand("staff").setExecutor(new StaffManagerCommand(this)); // Uses the listener
         this.getCommand("setstaff").setExecutor(new SetStaffCommand(this));
         this.getCommand("staffmail").setExecutor(new StaffMailCommand(this));
 
@@ -144,6 +149,7 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
 
         this.getCommand("pvannounce").setExecutor(new AnnounceCommand(this));
 
+        // REGISTER EVENTS
         this.getServer().getPluginManager().registerEvents(new VaultListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         this.getServer().getPluginManager().registerEvents(new KitShopListener(this), this);
@@ -151,7 +157,10 @@ public class PrisonVaults extends JavaPlugin implements CommandExecutor {
         this.getServer().getPluginManager().registerEvents(new PickpocketListener(this), this);
         this.getServer().getPluginManager().registerEvents(new JobListener(this), this);
         this.getServer().getPluginManager().registerEvents(new ProfileListener(this), this);
-        this.getServer().getPluginManager().registerEvents(new StaffManagementListener(this), this);
+
+        // Register the SPECIFIC INSTANCE of StaffManagementListener
+        this.getServer().getPluginManager().registerEvents(this.staffManagementListener, this); // <--- CHANGED
+
         this.getServer().getPluginManager().registerEvents(this.staffMailManager, this);
         this.getServer().getPluginManager().registerEvents(new KitAbilityListener(this), this);
         this.getServer().getPluginManager().registerEvents(new PermissionListener(this), this);

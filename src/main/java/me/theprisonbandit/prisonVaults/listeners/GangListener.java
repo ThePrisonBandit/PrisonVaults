@@ -32,7 +32,6 @@ public class GangListener implements Listener {
         this.plugin = plugin;
     }
 
-    // --- GUI CLICK HANDLER ---
     @EventHandler
     public void onMenuClick(InventoryClickEvent e) {
         String title = e.getView().getTitle();
@@ -62,19 +61,14 @@ public class GangListener implements Listener {
                 startChatInput(player, "DESC");
             } else if (clicked.getType() == Material.RED_DYE) {
                 openColorGUI(player);
-            }
-            // NEW: Ban Manager Button
-            else if (clicked.getType() == Material.IRON_BARS) {
+            } else if (clicked.getType() == Material.IRON_BARS) {
                 openBanManagerGUI(player, gang);
-            }
-            // --- DISBAND BUTTON LOGIC ---
-            else if (clicked.getType() == Material.TNT) {
+            } else if (clicked.getType() == Material.TNT) {
                 if (!gang.getOwner().equals(player.getUniqueId())) {
                     player.sendMessage(ChatColor.RED + "Only the Gang Owner can disband the gang!");
                     SoundUtils.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                     return;
                 }
-
                 player.closeInventory();
                 plugin.gangManager.chatInputMode.put(player.getUniqueId(), "CONFIRM_DISBAND");
                 player.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + "WARNING: " + ChatColor.RED + "You are about to disband your gang!");
@@ -85,7 +79,7 @@ public class GangListener implements Listener {
             }
         }
 
-        // --- NEW: BAN MANAGER GUI ---
+        // --- GANG BANS ---
         else if (title.equals(ChatColor.DARK_GRAY + "Gang Bans")) {
             e.setCancelled(true);
             Gang gang = plugin.gangManager.getPlayerGang(player.getUniqueId());
@@ -96,22 +90,21 @@ public class GangListener implements Listener {
                 return;
             }
 
-            // "Ban New Player" Button (Anvil)
             if (clicked.getType() == Material.ANVIL) {
                 startChatInput(player, "BAN_PLAYER");
                 return;
             }
 
-            // Unban Logic (Clicking a skull)
             if (clicked.getType() == Material.PLAYER_HEAD) {
                 SkullMeta meta = (SkullMeta) clicked.getItemMeta();
                 OfflinePlayer target = meta.getOwningPlayer();
 
                 if (target != null) {
+                    // Unban logic works with OfflinePlayer UUID
                     gang.removeBan(target.getUniqueId());
                     plugin.gangManager.saveGangs();
                     player.sendMessage(ChatColor.GREEN + "Unbanned " + target.getName() + ".");
-                    openBanManagerGUI(player, gang); // Refresh menu
+                    openBanManagerGUI(player, gang);
                     SoundUtils.playSound(player, Sound.BLOCK_ANVIL_USE, 1.0f, 2.0f);
                 }
             }
@@ -181,19 +174,19 @@ public class GangListener implements Listener {
             if (gang != null) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
 
-                    // --- BAN PLAYER ---
+                    // --- BAN PLAYER (Offline Compatible) ---
                     if (mode.equals("BAN_PLAYER")) {
                         String targetName = input;
+                        // Use getOfflinePlayer to support offline bans
                         OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
-                        // Basic check if they have played before or are online
+
                         if (target != null && (target.hasPlayedBefore() || target.isOnline())) {
                             if (gang.getOwner().equals(target.getUniqueId())) {
                                 e.getPlayer().sendMessage(ChatColor.RED + "You cannot ban yourself!");
                             } else {
-                                // Ban them
                                 gang.addBan(target.getUniqueId());
 
-                                // Kick if currently in gang
+                                // Kick if currently in gang (Works offline via UUID check)
                                 if (gang.getMembers().containsKey(target.getUniqueId())) {
                                     plugin.gangManager.kickMember(gang, target.getUniqueId());
                                     e.getPlayer().sendMessage(ChatColor.YELLOW + "Player was in the gang and has been kicked.");
@@ -261,7 +254,7 @@ public class GangListener implements Listener {
         }
     }
 
-    // --- HELPER METHODS (Must be inside the class) ---
+    // --- HELPER METHODS ---
 
     private void startChatInput(Player p, String mode) {
         p.closeInventory();
@@ -273,7 +266,6 @@ public class GangListener implements Listener {
     private void openBanManagerGUI(Player player, Gang gang) {
         Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_GRAY + "Gang Bans");
 
-        // List Banned Players
         int slot = 0;
         for (UUID bannedId : gang.getBannedPlayers()) {
             if (slot >= 45) break;
@@ -289,7 +281,6 @@ public class GangListener implements Listener {
             inv.setItem(slot++, head);
         }
 
-        // Controls
         inv.setItem(49, createItem(Material.ANVIL, ChatColor.RED + "Ban New Player", "Type name in chat"));
         ItemStack back = new ItemStack(Material.ARROW);
         ItemMeta backMeta = back.getItemMeta();
@@ -436,7 +427,7 @@ public class GangListener implements Listener {
             }
 
         }
-        // --- KICK LOGIC ---
+        // --- KICK LOGIC (Modified for Offline Support) ---
         else if (e.getClick() == ClickType.SHIFT_LEFT) {
             if (current == Rank.LEADER) {
                 player.sendMessage(ChatColor.RED + "You cannot kick the leader!");
@@ -444,15 +435,20 @@ public class GangListener implements Listener {
                 return;
             }
 
+            // Execute kick in data (handles saving)
+            plugin.gangManager.kickMember(gang, targetId);
+
+            // Message handling
             Player targetPlayer = Bukkit.getPlayer(targetId);
             if (targetPlayer != null && targetPlayer.isOnline()) {
                 String gName = gang.getName();
                 String gColor = gang.getColor();
                 targetPlayer.sendMessage(ChatColor.RED + "You were kicked from " +
                         ChatColor.translateAlternateColorCodes('&', gColor + gName) + ChatColor.RED + ".");
+            } else {
+                player.sendMessage(ChatColor.YELLOW + "Target is offline, but they have been kicked from the gang.");
             }
 
-            plugin.gangManager.kickMember(gang, targetId);
             player.sendMessage(ChatColor.RED + "Kicked member.");
             SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
         }

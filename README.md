@@ -5,55 +5,70 @@ PrisonVaults is the complete ecosystem designed to power modern Prison servers. 
 
 Stop cluttering your server with 20 different plugins. Get the all-in-one solution that just works.
 
-🔥 New in v1.1.2
-Smart Tab Completion: Every command now features intelligent autocompletion. Arguments like players, kit names, gang names, shop types, and configuration settings now autofill instantly.
+🔥 New in v1.1.3: "The Discipline Update"
+Strict Pet Control & Logic Overhaul:
 
-Pet AI Overhaul:
+Strict Passive Mode:
 
-Hostile Pet Logic: Boss pets (Wither, Warden) and aggressive pets (Blaze, Skeleton) no longer target their owners. They use advanced vector-based movement to follow safely.
+Master Safety Switch: When a pet is set to Passive, it is strictly harmless. It will never attack, shoot projectiles (Wither Skulls/Fireballs), or explode, even if provoked.
 
-Safe Mode: Wither pets no longer destroy blocks with explosions, and Fireball pets (Ghast/Blaze) no longer create fire blocks (grief prevention).
+Instant Neutralization: Switching to Passive immediately clears all anger and active targets from the pet.
 
-Bee Upgrade: Bee pets now have infinite stingers—they do not die after attacking.
+Combat Logic Hierarchy:
 
-Axolotl Boost: Axolotls now move faster on land.
+Decision Tree: Pets now follow a strict hierarchy: Aggression Mode (Master) ➔ Combat Style (Attack/Defense) ➔ Target Mode (PvE/PvP).
 
-Targeting System: Added a PvE/PvP Toggle for pets. In PvE mode, pets will ignore players and only attack monsters.
+True Defense: In Defense Mode, pets only attack entities that actively hurt their owner. They no longer auto-scan for targets.
 
-New Pet: Added the Lil Phantom (Replaced Lil Happy Ghast).
+Creeper Pet Rework:
 
-XP Action Bar: Pet XP gains are now displayed cleanly in the action bar instead of spamming chat.
+Respawn on Detonation: If a Creeper pet explodes (Aggressive Mode), it is treated as a "death." It deals damage to enemies, vanishes, and respawns automatically after the standard cooldown.
+
+Anti-Grief: Explosions are visual only and do not break blocks.
+
+Offline Player & Punishment Overhaul:
+
+Offline Staff Management: You can now Kick, Ban, and Demote staff members even if they are offline.
+
+Staff Rank Stripping: Banning or Kicking a staff member via the GUI or command now automatically strips their staff rank and resets their permissions group to default.
+
+Offline Gang Bans: Gang Leaders can now ban players from their gang even if the target is offline.
+
+Vanilla Command Override: Default Minecraft commands (like /kick, /ban, /op) are now hidden from normal players to ensure they use the PrisonVaults system.
+
+Quality of Life:
+
+Smart Tab Completion: Every command now features intelligent autocompletion for players, kits, gangs, and shops.
+
+XP Action Bar: Pet XP gains are displayed cleanly in the action bar.
 
 ⚔️ Advanced Gang System
 The most social feature of your server just got smarter.
 
 GUI Management: Manage members, colors, and settings via a polished GUI.
 
-Banishment Control: Gang leaders can ban players from their gang via the GUI ("Iron Bars" icon).
+Banishment Control: Gang leaders can ban players (offline or online) from their gang via the GUI ("Iron Bars" icon).
 
 Smart Notifications: Members are notified via chat upon promotion, demotion, or kicks.
 
-Safe Disband: Disbanding requires confirmation and alerts all online members.
-
-Deep Hierarchy: 7 Ranks: Member -> Hustler -> Brute -> Thug -> Shot Caller -> Elite -> Co-Leader.
+Deep Hierarchy: 7 Ranks: Member ➔ Hustler ➔ Brute ➔ Thug ➔ Shot Caller ➔ Elite ➔ Co-Leader.
 
 🐾 Pets Companion System
 Pets are no longer just cosmetic—they are fully functional combat companions using Minecraft 1.21's scaling technology.
 
-RPG Mechanics: Pets have HP, levels, and gain XP on kills (displayed in Action Bar).
+RPG Mechanics: Pets have HP, levels, and gain XP on kills.
 
-Tactical Modes: Toggle between PvP (Aggressive) and PvE (Passive) modes via the GUI.
+Tactical Modes:
 
-"Lil" Mobs: Collect combat-ready tiny monsters like the Lil Warden, Lil Wither, Lil Phantom, and Lil Blaze.
+Aggression: Aggressive (Combat Enabled) vs Passive (Strictly Harmless).
 
-Custom AI: Pets like Bees and Wither Skeletons have custom attack logic tailored to assist the player without causing friendly fire.
+Style: Attack (Hunt Enemies) vs Defense (Protect Owner).
 
-📦 Infinite Storage Vaults & Economy
-Rank-Based Limits: Players unlock more vaults as they rank up (Rank A = 1 Vault ... Rank Z = 104 Vaults).
+Targeting: PvP (Players/Pets) vs PvE (Mobs Only).
 
-Dynamic Autocomplete: /pv only suggests vault numbers you have actually unlocked.
+"Lil" Mobs: Collect combat-ready tiny monsters like the Lil Warden, Lil Wither, Lil Phantom, and Lil Creeper.
 
-Economy: Full support for decimals, massive numbers (Decillions), and transaction logging.
+Custom AI: Unique logic for every pet type, including infinite stinger Bees and safe Wither projectiles.
 
 🛡️ Staff & Permissions
 Zero Dependencies: You don't need LuckPerms. PrisonVaults handles groups and permissions natively.
@@ -62,9 +77,11 @@ Punishment Suite: Built-in Kick, Ban, Warn, and Pardon logic with history tracki
 
 Rank Safety: Owners/Co-Owners cannot be punished by lower staff.
 
+Vanilla Protection: Automatically hides vanilla commands (/ban, /kick) from non-staff and secures Admin commands (/gamemode, /give).
+
 🛠️ Commands & Arguments
 👤 Player Essentials
-/pv <number> - Open a specific personal vault (Autofills allowed numbers).
+/pv <number> - Open a specific personal vault.
 
 /sell or /sell <all|hand> - Sell items to the server.
 
@@ -110,12 +127,11 @@ Rank Safety: Owners/Co-Owners cannot be punished by lower staff.
 
 /pvshop <buy|sell> <messhall|smithy> [page] - Open specific job shops.
 
-🐾 Pets
-/pets - Open your pet collection GUI (Summon/Despawn/Rename).
+🐾 Pets & Kits
+/pets - Open your pet collection GUI (Summon/Manage).
 
 /petshop - Open the shop to buy new pets.
 
-⚔️ Kits
 /kit <name> - Equip a kit.
 
 /kits - List all available kits.
@@ -134,7 +150,7 @@ Management:
 
 /staff - Open the Staff Management GUI.
 
-/setstaff <player> <rank> - Set a player's staff role (Helper -> Owner).
+/setstaff <player> <rank> - Set a player's staff role (Helper ➔ Owner).
 
 /staffchat <message> - Talk in the private staff channel.
 
@@ -146,29 +162,25 @@ Management:
 
 Punishments:
 
-/pvkick <player> [reason]
+/pvkick <player> [reason] - Kick player (Offline compatible).
 
-/pvban <player> [reason]
+/pvban <player> [reason] - Ban player (Offline compatible).
 
-/pvwarn <player> <reason>
+/pvwarn <player> <reason> - Issue a warning.
 
-/pvpardon <player>
+/pvpardon <player> - Unban a player.
 
-Permissions:
+Permissions & Config:
 
 /pvperm group <name> <create|delete|add|remove> [permission]
 
 /pvperm user <player> <setgroup|reset> [group]
 
-Configuration & Economy:
-
 /addmoney <player> <amount> - Admin command to inject money.
 
-/createkit <Name> <Color> <ToolMat> <ArmorMat> <EnchantLvl> <Price> - Create a procedural kit in-game.
+/createkit - Create a procedural kit in-game.
 
 /pvconfig set <rob|pickpocket> <0.0-1.0> - Edit success chances.
-
-/pvconfig setworld <worldName> - Set the active world for Job scheduling.
 
 /pvscoreboard <show|hide> - Toggle the scoreboard overlay.
 

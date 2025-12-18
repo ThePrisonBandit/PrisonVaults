@@ -17,7 +17,7 @@ public class PetAttackListener implements Listener {
         this.plugin = plugin;
     }
 
-    // --- FIX: PET AGGRESSION CONTROL (High Priority) ---
+    // --- FIX: STRICT COMBAT HIERARCHY ---
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPetDamageEntity(EntityDamageByEntityEvent event) {
         Entity damager = event.getDamager();
@@ -36,26 +36,30 @@ public class PetAttackListener implements Listener {
             Player owner = plugin.petManager.getPetOwner((LivingEntity) damager);
             if (owner == null) return;
 
-            // 1. Prevent attacking Owner
+            // 1. MASTER SAFETY SWITCH: Passive Mode
+            // If Passive, NO damage is allowed unless explicitly commanded by the player.
+            CombatHandlingManager.AggressionMode agg = plugin.combatHandlingManager.getAggression(owner);
+            if (agg == CombatHandlingManager.AggressionMode.PASSIVE) {
+                // If the pet is NOT explicitly commanded to attack this target, Cancel.
+                if (!plugin.petManager.isExplicitlyTargeting(damager.getUniqueId(), victim.getUniqueId())) {
+                    event.setCancelled(true);
+                    if (damager instanceof Mob) ((Mob) damager).setTarget(null); // Force stop tracking
+                    return;
+                }
+            }
+
+            // 2. Prevent attacking Owner
             if (victim.equals(owner)) {
                 event.setCancelled(true);
-                if (damager instanceof Mob) {
-                    ((Mob) damager).setTarget(null); // STOP TARGETING
-                }
                 return;
             }
 
-            // 2. Prevent attacking other players if Owner is PVE
-            if (victim instanceof Player) {
-                boolean ownerPvp = plugin.pvpManager.isPvpEnabled(owner);
-                boolean victimPvp = plugin.pvpManager.isPvpEnabled((Player) victim);
-
-                // If either is in PVE (Safe) mode, cancel attack
-                if (!ownerPvp || !victimPvp) {
-                    event.setCancelled(true);
-                    if (damager instanceof Mob) {
-                        ((Mob) damager).setTarget(null); // STOP TARGETING
-                    }
+            // 3. PvE / PvP Compatibility Check
+            // We use PVEManager to decide if this specific target is allowed for the current mode.
+            if (!plugin.pveManager.canPetAttack(owner, victim)) {
+                event.setCancelled(true);
+                if (damager instanceof Mob) {
+                    ((Mob) damager).setTarget(null); // Stop tracking invalid target
                 }
             }
         }

@@ -114,7 +114,7 @@ public class HelpCommand implements TabExecutor {
         addCmd("/resetcooldown", "Reset the server cooldowns (OP Only)");
 
         // --- STAFF MANAGEMENT ---
-        addCmd("/staff", "Open the Staff Management GUI");
+        addCmd("/staff [player]", "Open the Staff Management GUI");
         addCmd("/setstaff <player> <rank>", "Set a player's staff rank (OP Only)");
         addCmd("/staffmail <read|clear>", "Check staff notifications/mail");
         addCmd("/staffchat (or /sc)", "Toggle or send staff chat");
