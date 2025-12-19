@@ -107,12 +107,23 @@ public class PetManager {
         player.sendMessage(ChatColor.GREEN + "Summoned " + type.display + " (Lvl " + getPetLevel(player, type) + ")");
     }
 
+    // --- FIX: STOP ATTACK CRASH ---
     public void stopPetAttack(Player owner) {
-        Entity pet = activePets.get(owner.getUniqueId());
-        if (pet == null) return;
-        activeTargets.remove(pet.getUniqueId());
-        if (pet instanceof Mob) ((Mob) pet).setTarget(null);
-        if (pet instanceof Warden) ((Warden) pet).clearAnger(null);
+        Entity rawPet = activePets.get(owner.getUniqueId());
+        if (rawPet == null) return;
+        activeTargets.remove(rawPet.getUniqueId());
+
+        if (rawPet instanceof Mob) {
+            Mob mob = (Mob) rawPet;
+            LivingEntity target = mob.getTarget();
+            mob.setTarget(null);
+
+            // FIX: Only clear anger if we have a valid target.
+            // Passing 'null' to clearAnger throws IllegalArgumentException.
+            if (rawPet instanceof Warden && target != null) {
+                ((Warden) rawPet).clearAnger(target);
+            }
+        }
     }
 
     private void startFollowTask() {
@@ -149,7 +160,6 @@ public class PetManager {
                         // 2. Resolve Target
                         LivingEntity target = null;
 
-                        // Check Manual/Event Target (Set by Defense Mode listener or Explicit Command)
                         if (activeTargets.containsKey(petId)) {
                             Entity storedTarget = Bukkit.getEntity(activeTargets.get(petId));
                             if (storedTarget instanceof LivingEntity && storedTarget.isValid() && !storedTarget.isDead()) {
@@ -160,8 +170,6 @@ public class PetManager {
                         }
 
                         // 3. Auto-Target Logic (Hunt)
-                        // STRICT RULE: Only scan for new targets if Mode is AGGRESSIVE and Style is ATTACK.
-                        // Defense Mode NEVER scans; it waits for PetListener to set a target via activeTargets.
                         if (target == null) {
                             CombatHandlingManager.AggressionMode agg = plugin.combatHandlingManager.getAggression(owner);
                             CombatHandlingManager.CombatStyle style = plugin.combatHandlingManager.getStyle(owner);
@@ -191,7 +199,7 @@ public class PetManager {
                         boolean isFightingEnemy = (target != null &&
                                 !target.equals(owner) &&
                                 !target.isDead() &&
-                                plugin.pveManager.canPetAttack(owner, target)); // Enforce PvE/PvP Check
+                                plugin.pveManager.canPetAttack(owner, target));
 
                         if (isFightingEnemy) {
                             if (isPassiveMelee(pet)) {
@@ -217,7 +225,6 @@ public class PetManager {
             if (!(e instanceof LivingEntity)) continue;
             LivingEntity living = (LivingEntity) e;
 
-            // Strict PvE/PvP Check
             if (plugin.pveManager.canPetAttack(owner, living)) {
                 double d = pet.getLocation().distance(living.getLocation());
                 if (d < closestDist) {
@@ -239,7 +246,6 @@ public class PetManager {
     }
 
     private void handlePassiveMobCombat(Mob pet, Player owner, LivingEntity target) {
-        // STRICT SAFETY: If Passive, do absolutely nothing.
         if (plugin.combatHandlingManager.getAggression(owner) == CombatHandlingManager.AggressionMode.PASSIVE) return;
 
         double distToTarget = pet.getLocation().distance(target.getLocation());
@@ -311,10 +317,7 @@ public class PetManager {
         if (rawPet == null || !(rawPet instanceof Mob)) return;
         Mob pet = (Mob) rawPet;
 
-        // STRICT SAFETY: No attacks if Passive
         if (plugin.combatHandlingManager.getAggression(owner) == CombatHandlingManager.AggressionMode.PASSIVE) return;
-
-        // STRICT SAFETY: PvE/PvP Check (Projectiles)
         if (!plugin.pveManager.canPetAttack(owner, target)) return;
 
         if (petAttackCooldowns.containsKey(owner.getUniqueId())) {

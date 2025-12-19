@@ -28,6 +28,51 @@ public class PetListener implements Listener {
         this.plugin = plugin;
     }
 
+    // --- WARDEN DARKNESS HANDLING (NEW) ---
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onWardenDarkness(EntityPotionEffectEvent event) {
+        // 1. Filter for Darkness applied to Players
+        if (event.getModifiedType() != PotionEffectType.DARKNESS) return;
+        if (!(event.getEntity() instanceof Player)) return;
+
+        // 2. Filter for Cause: WARDEN
+        if (event.getCause() != EntityPotionEffectEvent.Cause.WARDEN) return;
+
+        Player victim = (Player) event.getEntity();
+
+        // 3. Scan nearby entities to find the Warden Pet responsible
+        // The Warden's sonic boom/darkness range is roughly 20 blocks.
+        boolean nearbyWardenPetFound = false;
+
+        for (Entity entity : victim.getNearbyEntities(25, 25, 25)) {
+            if (entity instanceof Warden && plugin.petManager.isPet(entity)) {
+                Player owner = plugin.petManager.getPetOwner(entity);
+                if (owner == null) continue;
+
+                // LOGIC A: OWNER SAFETY (Always active)
+                // If the victim is the Owner, they are immune to their own pet's darkness.
+                if (victim.equals(owner)) {
+                    event.setCancelled(true); //
+                    return;
+                }
+
+                // LOGIC B: PvE SAFETY
+                // If the Owner is in PvE mode, their pet should NOT blind bystanders.
+                PVEManager.Mode mode = plugin.pveManager.getMode(owner); //
+                if (mode == PVEManager.Mode.PVE) {
+                    event.setCancelled(true); //
+                    return;
+                }
+
+                // LOGIC C: PvP Mode (Implicit)
+                // If we are here, it means:
+                // - Victim is NOT the owner.
+                // - Owner is in PvP mode.
+                // Therefore, we DO NOT cancel. The darkness applies to the enemy.
+            }
+        }
+    }
+
     // --- IMMUNITIES ---
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEnvironmentalDamage(EntityDamageEvent event) {

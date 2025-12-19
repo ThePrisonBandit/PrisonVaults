@@ -5,6 +5,8 @@ import me.theprisonbandit.prisonVaults.utils.SoundUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -13,6 +15,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,9 +32,11 @@ public class GangManager {
 
     private File gangsFile;
     private FileConfiguration gangsConfig;
+    private final NamespacedKey bannedKey; // Key for storing UUID
 
     public GangManager(PrisonVaults plugin) {
         this.plugin = plugin;
+        this.bannedKey = new NamespacedKey(plugin, "banned_uuid");
         loadGangs();
     }
 
@@ -44,7 +50,7 @@ public class GangManager {
         inv.setItem(14, createItem(Material.RED_DYE, ChatColor.LIGHT_PURPLE + "Gang Color", "Change gang name color"));
         inv.setItem(16, createItem(Material.PLAYER_HEAD, ChatColor.AQUA + "Members", "Manage gang members"));
 
-        // NEW: Ban Management Button (Iron Bars)
+        // Ban Management Button
         inv.setItem(8, createItem(Material.IRON_BARS, ChatColor.DARK_RED + "Banned Players", "Manage gang bans"));
 
         inv.setItem(22, createItem(Material.TNT, ChatColor.RED + "Disband Gang", "Delete the gang forever"));
@@ -63,6 +69,44 @@ public class GangManager {
         }
         item.setItemMeta(meta);
         return item;
+    }
+
+    // --- NEW: UPDATED BAN GUI WITH DATA CONTAINER ---
+    public void openBanManagerGUI(Player player, Gang gang) {
+        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_GRAY + "Gang Bans");
+
+        int slot = 0;
+        for (UUID bannedId : gang.getBannedPlayers()) {
+            if (slot >= 45) break;
+            OfflinePlayer offP = Bukkit.getOfflinePlayer(bannedId);
+
+            ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+            SkullMeta meta = (SkullMeta) head.getItemMeta();
+            meta.setOwningPlayer(offP);
+            meta.setDisplayName(ChatColor.RED + (offP.getName() != null ? offP.getName() : "Unknown"));
+            meta.setLore(Collections.singletonList(ChatColor.YELLOW + "Left-Click to Unban"));
+
+            // --- CRITICAL FIX: Store UUID in item data ---
+            meta.getPersistentDataContainer().set(bannedKey, PersistentDataType.STRING, bannedId.toString());
+
+            head.setItemMeta(meta);
+            inv.setItem(slot++, head);
+        }
+
+        inv.setItem(49, createItem(Material.ANVIL, ChatColor.RED + "Ban New Player", "Type name in chat"));
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        backMeta.setDisplayName(ChatColor.RED + "Back");
+        back.setItemMeta(backMeta);
+        inv.setItem(45, back);
+
+        player.openInventory(inv);
+        SoundUtils.playSound(player, Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+    }
+
+    // --- GETTER FOR KEY ---
+    public NamespacedKey getBannedKey() {
+        return bannedKey;
     }
 
     public boolean gangExists(String name) {
@@ -85,7 +129,6 @@ public class GangManager {
     }
 
     public void invitePlayer(Gang gang, Player target) {
-        // NEW: Check if banned
         if (gang.isBanned(target.getUniqueId())) {
             Player owner = Bukkit.getPlayer(gang.getOwner());
             if (owner != null) owner.sendMessage(ChatColor.RED + "That player is banned from your gang!");
@@ -105,7 +148,6 @@ public class GangManager {
     }
 
     public void joinGang(Player player, Gang gang) {
-        // NEW: Double check ban
         if (gang.isBanned(player.getUniqueId())) {
             player.sendMessage(ChatColor.RED + "You are banned from this gang.");
             return;
@@ -168,14 +210,12 @@ public class GangManager {
             gangsConfig.set(path + ".color", gang.getColor());
             gangsConfig.set(path + ".owner", gang.getOwner().toString());
 
-            // Save Members
             List<String> memberList = new ArrayList<>();
             for (Map.Entry<UUID, Rank> entry : gang.getMembers().entrySet()) {
                 memberList.add(entry.getKey() + ":" + entry.getValue().name());
             }
             gangsConfig.set(path + ".members", memberList);
 
-            // NEW: Save Bans
             List<String> bannedList = new ArrayList<>();
             for (UUID uuid : gang.getBannedPlayers()) {
                 bannedList.add(uuid.toString());
@@ -199,7 +239,6 @@ public class GangManager {
                 gang.setDescription(sec.getString("desc"));
                 gang.setColor(sec.getString("color"));
 
-                // Load Members
                 for (String entry : sec.getStringList("members")) {
                     String[] parts = entry.split(":");
                     if (parts.length >= 2) {
@@ -209,7 +248,6 @@ public class GangManager {
                     }
                 }
 
-                // NEW: Load Bans
                 if (sec.contains("banned")) {
                     for (String s : sec.getStringList("banned")) {
                         gang.addBan(UUID.fromString(s));
@@ -221,13 +259,10 @@ public class GangManager {
         }
     }
 
-    // --- LEAVE GANG LOGIC ---
     public void leaveGang(Player player, Gang gang) {
-        // 1. Remove from Gang Data
         gang.getMembers().remove(player.getUniqueId());
         playerGangCache.remove(player.getUniqueId());
 
-        // 2. Wipe Player Data (Remove gang association from their profile if stored there)
         FileConfiguration data = plugin.getPlayerData(player.getUniqueId());
         data.set("gang", null);
         try {
@@ -236,19 +271,15 @@ public class GangManager {
             e.printStackTrace();
         }
 
-        // 3. Notify the Player
         player.sendMessage(ChatColor.YELLOW + "You left " + gang.getColor() + gang.getName() + ChatColor.YELLOW + "~!");
         SoundUtils.playSound(player, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
 
-        // 4. Notify the Leader (if online)
         Player leader = Bukkit.getPlayer(gang.getOwner());
         if (leader != null && leader.isOnline()) {
             leader.sendMessage(ChatColor.RED + "Notification: " + ChatColor.WHITE + player.getName() +
                     ChatColor.RED + " left the " + gang.getColor() + gang.getName() + ChatColor.RED + "~!");
             SoundUtils.playSound(leader, Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
         }
-
-        // 5. Save Changes
         saveGangs();
     }
 }

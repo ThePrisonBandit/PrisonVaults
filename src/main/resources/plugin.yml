@@ -1,5 +1,5 @@
 name: PrisonVaults
-version: '1.1.3'
+version: '1.1.4'
 main: me.theprisonbandit.prisonVaults.PrisonVaults
 api-version: '1.21'
 prefix: '!'
@@ -93,7 +93,7 @@ commands:
     usage: /pvhelp <page>
   staff:
     description: Open the Staff Management GUI
-    usage: /staff
+    usage: /staff <serverstaff|servermember>
     permission: prisonvaults.staff.manage
   staffmail:
     description: Check staff notifications
@@ -319,6 +319,7 @@ permissions:
       prisonvaults.pardon: true
       prisonvaults.createkit: true
       prisonvaults.staff.manage: true
+      prisonvaults.staff.servermember: true
       prisonvaults.reload: true
       prisonvaults.pvconfig: true
       prisonvaults.resetcooldown: true
@@ -332,6 +333,7 @@ permissions:
       prisonvaults.admin: true
       prisonvaults.addmoney: true
       prisonvaults.setstaff: true
+      prisonvaults.staff.serverstaff: true
       minecraft.command: true
 
   prisonvaults.owner:

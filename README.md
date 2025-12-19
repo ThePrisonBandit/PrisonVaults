@@ -5,49 +5,43 @@ PrisonVaults is the complete ecosystem designed to power modern Prison servers. 
 
 Stop cluttering your server with 20 different plugins. Get the all-in-one solution that just works.
 
-🔥 New in v1.1.3: "The Discipline Update"
-Strict Pet Control & Logic Overhaul:
+🔥 New in v1.1.4: "The Authority & Warden Update"
+Granular Staff Management:
 
-Strict Passive Mode:
+Split GUI System: The /staff command has been overhauled. You can now open specific views for Server Staff or Server Members directly via subcommands.
 
-Master Safety Switch: When a pet is set to Passive, it is strictly harmless. It will never attack, shoot projectiles (Wither Skulls/Fireballs), or explode, even if provoked.
+New Permissions: Added distinct permissions (prisonvaults.staff.serverstaff and prisonvaults.staff.servermember) so you can control exactly which lists your staff can view.
 
-Instant Neutralization: Switching to Passive immediately clears all anger and active targets from the pet.
+Protection Logic:
 
-Combat Logic Hierarchy:
+Owner Safety: Server Owners and Co-Owners are now immune to punishment via the GUI. The Ban, Kick, Warn, and IP-Ban buttons are automatically disabled when viewing top-ranking staff.
 
-Decision Tree: Pets now follow a strict hierarchy: Aggression Mode (Master) ➔ Combat Style (Attack/Defense) ➔ Target Mode (PvE/PvP).
+Rank Logic: Regular members cannot be promoted via the Staff GUI (preventing accidental promotions); they must be set via command first.
 
-True Defense: In Defense Mode, pets only attack entities that actively hurt their owner. They no longer auto-scan for targets.
+Advanced Punishment Tools:
 
-Creeper Pet Rework:
+IP-Banning: Added a Ban-IP button to the Staff Action Menu. This bans the target's IP address and their account simultaneously.
 
-Respawn on Detonation: If a Creeper pet explodes (Aggressive Mode), it is treated as a "death." It deals damage to enemies, vanishes, and respawns automatically after the standard cooldown.
+Visual Indicators: Punishment buttons now visually gray out (barrier/glass) if the action is not allowed on the specific target.
 
-Anti-Grief: Explosions are visual only and do not break blocks.
+Pet & Gang Refinements:
 
-Offline Player & Punishment Overhaul:
+Lil Warden Balance: Fixed the Darkness Effect logic.
 
-Offline Staff Management: You can now Kick, Ban, and Demote staff members even if they are offline.
+Owner Immunity: The pet owner is never blinded by their own Warden.
 
-Staff Rank Stripping: Banning or Kicking a staff member via the GUI or command now automatically strips their staff rank and resets their permissions group to default.
+PvE Safety: In PvE mode, the Warden will not blind innocent bystanders.
 
-Offline Gang Bans: Gang Leaders can now ban players from their gang even if the target is offline.
+PvP Logic: In PvP mode, the darkness only affects enemy players.
 
-Vanilla Command Override: Default Minecraft commands (like /kick, /ban, /op) are now hidden from normal players to ensure they use the PrisonVaults system.
-
-Quality of Life:
-
-Smart Tab Completion: Every command now features intelligent autocompletion for players, kits, gangs, and shops.
-
-XP Action Bar: Pet XP gains are displayed cleanly in the action bar.
+Gang Ban Management: Gang leaders can now Left-Click a banned player's skull in the Gang Ban GUI to immediately unban them. This sends a notification to the Gang Owner confirming the action.
 
 ⚔️ Advanced Gang System
 The most social feature of your server just got smarter.
 
 GUI Management: Manage members, colors, and settings via a polished GUI.
 
-Banishment Control: Gang leaders can ban players (offline or online) from their gang via the GUI ("Iron Bars" icon).
+Banishment Control: Gang leaders can ban players (offline or online). New: Simply Left-Click in the GUI to unban.
 
 Smart Notifications: Members are notified via chat upon promotion, demotion, or kicks.
 
@@ -58,28 +52,58 @@ Pets are no longer just cosmetic—they are fully functional combat companions u
 
 RPG Mechanics: Pets have HP, levels, and gain XP on kills.
 
-Tactical Modes:
-
-Aggression: Aggressive (Combat Enabled) vs Passive (Strictly Harmless).
-
-Style: Attack (Hunt Enemies) vs Defense (Protect Owner).
+Tactical Modes: Aggressive vs Passive | Attack vs Defense.
 
 Targeting: PvP (Players/Pets) vs PvE (Mobs Only).
 
 "Lil" Mobs: Collect combat-ready tiny monsters like the Lil Warden, Lil Wither, Lil Phantom, and Lil Creeper.
 
-Custom AI: Unique logic for every pet type, including infinite stinger Bees and safe Wither projectiles.
+Lil Warden Update: Smart Darkness effect handling based on combat mode.
 
-🛡️ Staff & Permissions
-Zero Dependencies: You don't need LuckPerms. PrisonVaults handles groups and permissions natively.
+🛠️ Commands & Arguments (v1.1.4)
+🛡️ Staff & Admin (OP/Permission Required)
+Management:
 
-Punishment Suite: Built-in Kick, Ban, Warn, and Pardon logic with history tracking.
+/staff serverstaff - Open the GUI listing only Server Staff.
 
-Rank Safety: Owners/Co-Owners cannot be punished by lower staff.
+/staff servermember - Open the GUI listing only Server Members.
 
-Vanilla Protection: Automatically hides vanilla commands (/ban, /kick) from non-staff and secures Admin commands (/gamemode, /give).
+/setstaff <player> <rank> - Set a player's staff role (Helper ➔ Owner).
 
-🛠️ Commands & Arguments
+/staffchat <message> - Talk in the private staff channel.
+
+/staffmail <read|clear> - View staff notifications.
+
+/pvannounce <message> - Broadcast a server-wide alert with sound.
+
+/resetcooldown - Reset all cooldowns for all players.
+
+Punishments:
+
+/pvkick <player> [reason] - Kick player (Offline compatible).
+
+/pvban <player> [reason] - Ban player (Offline compatible).
+
+/pvwarn <player> <reason> - Issue a warning.
+
+/pvpardon <player> - Unban a player.
+
+Permissions & Config:
+
+/pvperm group <name> <create|delete|add|remove> [permission]
+
+/pvperm user <player> <setgroup|reset> [group]
+
+/addmoney <player> <amount> - Admin command to inject money.
+
+/createkit - Create a procedural kit in-game.
+
+/pvconfig set <rob|pickpocket> <0.0-1.0> - Edit success chances.
+
+/pvscoreboard <show|hide> - Toggle the scoreboard overlay.
+
+/prisonvaults reload - Reload all configuration files.
+
 👤 Player Essentials
 /pv <number> - Open a specific personal vault.
 
@@ -144,47 +168,6 @@ Vanilla Protection: Automatically hides vanilla commands (/ban, /kick) from non-
 /whois <player> - View another player's profile.
 
 /setbio <text> - Set your profile biography.
-
-🛡️ Staff & Admin (OP/Permission Required)
-Management:
-
-/staff - Open the Staff Management GUI.
-
-/setstaff <player> <rank> - Set a player's staff role (Helper ➔ Owner).
-
-/staffchat <message> - Talk in the private staff channel.
-
-/staffmail <read|clear> - View staff notifications.
-
-/pvannounce <message> - Broadcast a server-wide alert with sound.
-
-/resetcooldown - Reset all cooldowns for all players.
-
-Punishments:
-
-/pvkick <player> [reason] - Kick player (Offline compatible).
-
-/pvban <player> [reason] - Ban player (Offline compatible).
-
-/pvwarn <player> <reason> - Issue a warning.
-
-/pvpardon <player> - Unban a player.
-
-Permissions & Config:
-
-/pvperm group <name> <create|delete|add|remove> [permission]
-
-/pvperm user <player> <setgroup|reset> [group]
-
-/addmoney <player> <amount> - Admin command to inject money.
-
-/createkit - Create a procedural kit in-game.
-
-/pvconfig set <rob|pickpocket> <0.0-1.0> - Edit success chances.
-
-/pvscoreboard <show|hide> - Toggle the scoreboard overlay.
-
-/prisonvaults reload - Reload all configuration files.
 
 ⚙️ Configuration Files
 config.yml: Main settings, chances, and world definitions.
